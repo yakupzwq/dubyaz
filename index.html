@@ -210,6 +210,37 @@
     .seg-rail .play{margin:0 0 0 auto;width:42px;height:42px}
   }
 
+  /* ============ Step 3: dubbing + export ============ */
+  .stage-bar{gap:10px 18px}
+  .ctl-group{display:flex;align-items:center;gap:10px}
+  #countOverlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(21,18,28,.55);font-family:var(--display);
+    font-weight:800;font-size:clamp(4rem,16vw,8rem);color:var(--sub);pointer-events:none}
+  #recBadge{position:absolute;top:12px;left:12px;background:var(--rec);color:#fff;font-weight:700;font-size:.85rem;padding:4px 10px 4px 22px;border-radius:99px}
+  #recBadge::before{content:"";position:absolute;left:9px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.2}}
+  .line.dub{border-top:1px solid var(--line);padding-top:8px;align-items:center;flex-wrap:wrap}
+  .line.dub .tag{margin-top:0;background:rgba(255,90,95,.14);color:var(--rec)}
+  .dub-info{flex:1;min-width:120px;font-size:.88rem;color:var(--muted);padding:0 6px}
+  .dub-info.ok{color:var(--ok)} .dub-info.warn{color:var(--sub)} .dub-info.bad{color:var(--rec)}
+  .rec-btn{min-height:42px;padding:6px 14px;border-radius:99px;border:1px solid var(--rec);background:transparent;color:var(--rec);font-weight:700;
+    display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem}
+  .rec-btn::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--rec)}
+  .rec-btn:hover{background:rgba(255,90,95,.1)}
+  .rec-btn:disabled{opacity:.4;cursor:not-allowed}
+  .seg.recording{border-color:var(--rec);background:#2a1c26}
+  .seg.recording .rec-btn{background:var(--rec);color:#fff}
+  .seg.recording .rec-btn::before{background:#fff;border-radius:2px}
+  .seg.has-dub .line.dub .tag{background:var(--rec);color:#fff}
+  input[type=range]{width:100%;accent-color:var(--sub);min-height:32px}
+  .field output{color:var(--text);font-weight:600;margin-left:6px}
+  details.tr-panel > summary .sidenote{color:var(--muted);font-size:.9rem;font-weight:500}
+  .opt-rows{display:flex;flex-direction:column;gap:10px}
+  .opt-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .opt-row .lbl,.ctl-group .lbl{color:var(--muted);font-size:.9rem}
+  #expCanvas{width:100%;border-radius:var(--r-md);margin-top:14px;background:#000}
+  #expResult{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+  #expResult .btn{width:100%}
+
   /* ============ Footer note + toast ============ */
   .foot{color:var(--dim);font-size:.84rem;text-align:center;padding:4px 16px 28px}
   #toast{position:fixed;left:50%;bottom:calc(22px + var(--safe-b));transform:translateX(-50%) translateY(16px);background:var(--text);color:var(--ink);
@@ -227,7 +258,8 @@
     <button class="step active" data-step="1" data-target="dropZone"><i>1</i>Video</button>
     <button class="step" data-step="2" data-target="asrPanel"><i>2</i>Yazıya dök</button>
     <button class="step" data-step="3" data-target="trPanel"><i>3</i>Çevir</button>
-    <button class="step" data-step="4" data-target="scriptPanel"><i>4</i>Dışa aktar</button>
+    <button class="step" data-step="4" data-target="dubPanel"><i>4</i>Dublaj</button>
+    <button class="step" data-step="5" data-target="exportPanel"><i>5</i>Dışa aktar</button>
   </nav>
 </header>
 
@@ -247,13 +279,24 @@
       <div class="frame">
         <video id="video" controls playsinline preload="metadata"></video>
         <div id="subOverlay" aria-live="off"></div>
+        <div id="countOverlay" class="hidden" aria-live="assertive"></div>
+        <div id="recBadge" class="hidden">Kayıt</div>
       </div>
       <div class="stage-bar">
-        <span class="lbl">Altyazı önizleme</span>
-        <div class="seg-ctl" role="radiogroup" aria-label="Altyazı önizleme">
-          <label><input type="radio" name="subMode" value="off"><span>Kapalı</span></label>
-          <label><input type="radio" name="subMode" value="orig"><span>Orijinal</span></label>
-          <label><input type="radio" name="subMode" value="tr" checked><span>Türkçe</span></label>
+        <div class="ctl-group">
+          <span class="lbl">Altyazı</span>
+          <div class="seg-ctl" role="radiogroup" aria-label="Altyazı">
+            <label><input type="radio" name="subMode" value="off"><span>Yok</span></label>
+            <label><input type="radio" name="subMode" value="orig"><span>Orijinal</span></label>
+            <label><input type="radio" name="subMode" value="tr" checked><span>Türkçe</span></label>
+          </div>
+        </div>
+        <div class="ctl-group">
+          <span class="lbl">Ses</span>
+          <div class="seg-ctl" role="radiogroup" aria-label="Ses">
+            <label><input type="radio" name="audioMode" value="orig" checked><span>Orijinal</span></label>
+            <label><input type="radio" name="audioMode" value="dub"><span>Dublajlı</span></label>
+          </div>
         </div>
       </div>
     </div>
@@ -306,6 +349,44 @@
         <div id="deviceInfo"></div>
       </div>
     </div>
+
+    <div id="exportPanel" class="panel hidden">
+      <div class="panel-head"><h2>Videoyu dışa aktar</h2></div>
+      <p class="hint" id="expSummary"></p>
+      <div class="opt-rows">
+        <div class="opt-row"><span class="lbl">Yazı boyutu</span>
+          <div class="seg-ctl" role="radiogroup" aria-label="Yazı boyutu">
+            <label><input type="radio" name="subSize" value="s"><span>Küçük</span></label>
+            <label><input type="radio" name="subSize" value="m" checked><span>Orta</span></label>
+            <label><input type="radio" name="subSize" value="l"><span>Büyük</span></label>
+          </div>
+        </div>
+        <div class="opt-row"><span class="lbl">Konum</span>
+          <div class="seg-ctl" role="radiogroup" aria-label="Altyazı konumu">
+            <label><input type="radio" name="subPos" value="bottom" checked><span>Alt</span></label>
+            <label><input type="radio" name="subPos" value="middle"><span>Orta</span></label>
+            <label><input type="radio" name="subPos" value="top"><span>Üst</span></label>
+          </div>
+        </div>
+        <div class="opt-row"><span class="lbl">Renk</span>
+          <div class="seg-ctl" role="radiogroup" aria-label="Altyazı rengi">
+            <label><input type="radio" name="subColor" value="white"><span>Beyaz</span></label>
+            <label><input type="radio" name="subColor" value="yellow" checked><span>Sarı</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="expBtn" class="btn primary wide">Videoyu dışa aktar</button>
+        <button id="expCancelBtn" class="btn stop wide hidden">Dışa aktarmayı durdur</button>
+      </div>
+      <div class="stage hidden" id="stExp" style="margin-top:14px">
+        <div class="stage-head"><span>Video hazırlanıyor</span><span class="st">Bekliyor</span></div>
+        <div class="bar"><i></i></div>
+      </div>
+      <canvas id="expCanvas" class="hidden"></canvas>
+      <div id="expAlerts" class="alerts"></div>
+      <div id="expResult" class="hidden"></div>
+    </div>
   </section>
 
   <!-- ===== Right: translation + sentence timeline ===== -->
@@ -357,6 +438,27 @@
       </div>
     </details>
 
+    <details id="dubPanel" class="panel tr-panel hidden">
+      <summary><h2>Dublaj</h2><span id="dubCount" class="sidenote"></span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none"/></svg></summary>
+      <div class="tr-body">
+        <p class="hint">Her cümlenin kartındaki kırmızı düğmeyle kaydet. 3-2-1 sayımından sonra o cümlenin videosu sessiz oynar; Türkçe metni oku, bitince düğmeye tekrar bas. Uzun kayıtlar ses tonu bozulmadan en fazla 1,3 kat hızlandırılır.</p>
+        <label class="field">Orijinal ses (dublaj olmayan yerlerde) <output id="lvOrigOut">100%</output>
+          <input id="lvOrig" type="range" min="0" max="100" value="100" step="5">
+        </label>
+        <label class="field">Arka plan (dublaj konuşurken) <output id="lvDuckOut">20%</output>
+          <input id="lvDuck" type="range" min="0" max="100" value="20" step="5">
+        </label>
+        <label class="field">Dublaj sesi <output id="lvDubOut">100%</output>
+          <input id="lvDub" type="range" min="0" max="200" value="100" step="5">
+        </label>
+        <div class="actions" style="margin-top:0">
+          <button id="dubPreviewBtn" class="btn">Dublajlı izle</button>
+          <button id="dubClearBtn" class="btn stop">Tüm kayıtları sil</button>
+        </div>
+        <div id="dubAlerts" class="alerts"></div>
+      </div>
+    </details>
+
     <div id="scriptPanel" class="panel">
       <div class="script-head"><h2>Cümleler</h2><span id="segCount">0</span></div>
       <div class="export-bar">
@@ -377,7 +479,7 @@
     </div>
   </section>
 </main>
-<p class="foot">DubYaz v1.2. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
+<p class="foot">DubYaz v1.3. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
 
 <div id="toast" role="status"></div>
 
@@ -543,7 +645,7 @@ self.onmessage = async (ev) => {
 <script>
 'use strict';
 /* =====================================================================
-   DubYaz v1.2 — Step 1 + Step 2 (new UI): upload, in-browser transcription, sentence cards,
+   DubYaz v1.3 — Steps 1-3 (transcribe, translate, dub + export): upload, in-browser transcription, sentence cards,
    copy/export. Later steps (translation, voice, burned-in export) plug
    into the same `state` object and the module objects below.
    ===================================================================== */
@@ -558,7 +660,7 @@ const state = {
   device: null,
   busy: false,         // transcription running
   translating: false,  // translation running
-  // Segment shape: {id, start, end, text, translation: "", speaker: null}
+  // Segment shape: {id, start, end, text, translation: "", speaker: null, dub: null}
   segments: [],
 };
 
@@ -689,13 +791,15 @@ const VideoInput = {
     return /\.(mp4|m4v|webm|mov|mkv|avi|3gp|ogv|mpeg|mpg)$/i.test(file.name || '');
   },
   load(file) {
-    if (state.busy || state.translating) { UI.toast('Önce devam eden işlemi bitir veya durdur'); return; }
+    if (state.busy || state.translating || Export.running || Recorder.activeId != null) { UI.toast('Önce devam eden işlemi bitir veya durdur'); return; }
     UI.clearAlerts();
     if (!this.isVideo(file)) { UI.alert('err', Errors.message('unsupported')); return; }
-    if (state.segments.length && !confirm('Yeni video seçilirse mevcut cümleler silinecek. Devam edilsin mi?')) return;
+    if (state.segments.length && !confirm('Yeni video seçilirse mevcut cümleler' + (Mix.dubbed().length ? ' ve dublaj kayıtları' : '') + ' silinecek. Devam edilsin mi?')) return;
     if (state.videoUrl) URL.revokeObjectURL(state.videoUrl);
     state.file = file;
     state.duration = 0;
+    OrigAudio.reset();
+    $('expResult').classList.add('hidden');
     state.videoUrl = URL.createObjectURL(file);
     Segments.set([]);
     const v = $('video');
@@ -827,7 +931,8 @@ const Job = {
   runId: 0,
   async start() {
     if (!state.file || state.busy || state.translating) return;
-    if (state.segments.length && !confirm('Mevcut cümleler yenileriyle değiştirilecek. Devam edilsin mi?')) return;
+    if (Export.running || Recorder.activeId != null) { UI.toast('Önce devam eden işlemi bitir'); return; }
+    if (state.segments.length && !confirm('Mevcut cümleler' + (Mix.dubbed().length ? ', çeviriler ve dublaj kayıtları' : ' ve çeviriler') + ' silinip yeniden oluşturulacak. Devam edilsin mi?')) return;
     UI.clearAlerts();
     if (state.duration > MAX_RECOMMENDED_SEC) {
       if (!confirm('Video ' + Util.fmtTime(state.duration) + ' uzunluğunda. 5 dakikadan uzun videolar çok bellek kullanır ve yavaş işlenir (özellikle telefonda). Yine de devam edilsin mi?')) return;
@@ -980,14 +1085,39 @@ const Segments = {
       let end = Array.isArray(c.timestamp) && c.timestamp[1] != null ? c.timestamp[1] : duration;
       if (duration) { start = Math.min(start, duration); end = Math.min(end, duration); }
       if (end <= start) end = start + 0.5;
-      out.push({ id: out.length + 1, start, end, text, translation: '', speaker: null });
+      out.push({ id: out.length + 1, start, end, text, translation: '', speaker: null, dub: null });
     });
     return out;
   },
   set(list) {
     Player.stop();
+    if (typeof Recorder !== 'undefined') Recorder.cancel();
     state.segments = list;
     this.render();
+    Mix.invalidate();
+    Dub.refresh();
+  },
+  // Update the dub row of one card (status text, buttons) without re-rendering.
+  dubUI(id, liveText) {
+    const s = this.get(id), c = this.card(id);
+    if (!s || !c) return;
+    const info = c.querySelector('.dub-info');
+    const recording = Recorder.activeId === id;
+    c.classList.toggle('recording', recording);
+    c.classList.toggle('has-dub', !!s.dub);
+    const recBtn = c.querySelector('[data-act="rec"]');
+    recBtn.textContent = recording ? 'Bitir' : (s.dub ? 'Tekrar kaydet' : 'Kaydet');
+    recBtn.disabled = !recording && Recorder.activeId != null;
+    c.querySelector('[data-act="listen"]').disabled = !s.dub || recording;
+    c.querySelector('[data-act="deldub"]').disabled = !s.dub || recording;
+    info.className = 'dub-info';
+    if (liveText) { info.textContent = liveText; return; }
+    const slot = DubFit.slot(s);
+    if (!s.dub) { info.textContent = 'Kayıt yok. Bu cümle için ' + slot.toFixed(1) + ' sn var.'; return; }
+    const f = DubFit.info(s);
+    if (f.need <= 1) { info.classList.add('ok'); info.textContent = s.dub.dur.toFixed(1) + ' sn kayıt, süreye sığıyor.'; }
+    else if (f.fits) { info.classList.add('warn'); info.textContent = s.dub.dur.toFixed(1) + ' sn kayıt, ' + f.rate.toFixed(2) + ' kat hızlandırılacak.'; }
+    else { info.classList.add('bad'); info.textContent = s.dub.dur.toFixed(1) + ' sn kayıt, sığmıyor (' + f.need.toFixed(2) + ' kat gerekir). 1,3 kat hızlandırılıp sonraki cümleye taşar; daha hızlı okuyup tekrar kaydedebilirsin.'; }
   },
   get(id) { return state.segments.find((s) => s.id === id); },
   autosize(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; },
@@ -1010,6 +1140,8 @@ const Segments = {
     $('segCount').textContent = has ? state.segments.length + ' cümle' : '';
     ['copyAllBtn', 'txtBtn', 'srtBtn'].forEach((id) => { $(id).disabled = !has; });
     $('trPanel').classList.toggle('hidden', !has);
+    $('dubPanel').classList.toggle('hidden', !has);
+    $('exportPanel').classList.toggle('hidden', !has);
     Translation.updateButtons();
     Stepper.update();
     Sync.reset();
@@ -1037,6 +1169,11 @@ const Segments = {
             '<button class="btn icon-btn" data-act="tr" aria-label="Bu cümleyi çevir" title="Çevir">' + ICON.globe + '</button>' +
             '<button class="btn icon-btn" data-act="copytr" aria-label="Çeviriyi kopyala" title="Kopyala">' + ICON.copy + '</button>' +
           '</div>' +
+          '<div class="line dub"><span class="tag">Ses</span><span class="dub-info"></span>' +
+            '<button class="rec-btn" data-act="rec">Kaydet</button>' +
+            '<button class="btn icon-btn" data-act="listen" aria-label="Dublajı dinle" title="Dublajla dinle">' + ICON.play + '</button>' +
+            '<button class="btn icon-btn" data-act="deldub" aria-label="Kaydı sil" title="Kaydı sil">' + ICON.trash + '</button>' +
+          '</div>' +
         '</div>';
       card.querySelector('.t1').textContent = Util.fmtTime(s.start);
       card.querySelector('.t2').textContent = Util.fmtTime(s.end);
@@ -1052,10 +1189,14 @@ const Segments = {
       card.querySelector('[data-act="copy"]').addEventListener('click', () => Clip.copy(s.text.trim(), 'Cümle kopyalandı'));
       card.querySelector('[data-act="copytr"]').addEventListener('click', () => Clip.copy((s.translation || '').trim(), 'Çeviri kopyalandı'));
       card.querySelector('[data-act="tr"]').addEventListener('click', () => Translation.run([s.id]));
+      card.querySelector('[data-act="rec"]').addEventListener('click', () => Recorder.toggle(s.id));
+      card.querySelector('[data-act="listen"]').addEventListener('click', () => Dub.listen(s.id));
+      card.querySelector('[data-act="deldub"]').addEventListener('click', () => Dub.remove(s.id));
       frag.appendChild(card);
     });
     box.appendChild(frag);
     box.querySelectorAll('textarea').forEach((ta) => this.autosize(ta));
+    state.segments.forEach((s) => this.dubUI(s.id));
   },
 };
 
@@ -1063,6 +1204,7 @@ const Segments = {
 const ICON = {
   play: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>',
   copy: '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>',
+  trash: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
   globe: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 10h15M10 2.5c2.2 2.3 2.2 12.7 0 15M10 2.5c-2.2 2.3-2.2 12.7 0 15" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
 };
 
@@ -1099,7 +1241,6 @@ const Sync = {
     let text = '';
     if (s && mode === 'orig') text = s.text.trim();
     if (s && mode === 'tr') text = (s.translation || '').trim() || s.text.trim();
-    ov.classList.toggle('tr', !!s && mode === 'tr' && !!(s.translation || '').trim());
     if (ov.textContent !== text) ov.textContent = text;
     if (id === this.currentId) return;
     if (this.currentId != null) { const old = Segments.card(this.currentId); if (old) old.classList.remove('live'); }
@@ -1129,8 +1270,9 @@ const Stepper = {
   update() {
     const hasFile = !!state.file, hasSegs = state.segments.length > 0;
     const translated = hasSegs && state.segments.every((s) => !s.text.trim() || (s.translation || '').trim());
-    const doneMap = { 1: hasFile, 2: hasSegs, 3: translated, 4: false };
-    const active = !hasFile ? 1 : !hasSegs ? 2 : !translated ? 3 : 4;
+    const dubbed = hasSegs && state.segments.some((s) => s.dub);
+    const doneMap = { 1: hasFile, 2: hasSegs, 3: translated, 4: dubbed, 5: false };
+    const active = !hasFile ? 1 : !hasSegs ? 2 : !translated ? 3 : !dubbed ? 4 : 5;
     document.querySelectorAll('.step').forEach((b) => {
       const n = Number(b.dataset.step);
       b.classList.toggle('done', !!doneMap[n] && n !== active);
@@ -1150,7 +1292,7 @@ const Player = {
     v.addEventListener('seeking', () => { if (this.endAt !== null && !this.seekingByUs) this.stop(); });
     v.addEventListener('seeked', () => { this.seekingByUs = false; });
   },
-  async playSegment(id) {
+  async playSegment(id, opts) {
     const s = Segments.get(id);
     const v = $('video');
     if (!s || !v.src) return;
@@ -1159,7 +1301,7 @@ const Player = {
     this.mark(true);
     this.seekingByUs = true;
     v.currentTime = s.start;
-    this.endAt = s.end;
+    this.endAt = opts && opts.untilSlot ? s.start + DubFit.slot(s) : s.end;
     try { await v.play(); }
     catch (e) { this.stop(); UI.toast('Video oynatılamadı'); return; }
     const tick = () => {
@@ -1589,6 +1731,651 @@ const Translation = {
   },
 };
 
+/* =====================================================================
+   STEP 3 — Dubbing (per-sentence mic recording) and video export with
+   burned-in subtitles. Original audio is kept and ducked under the dub.
+   Segment field added: s.dub = {pcm: Float32Array, sr, dur} | null
+   ===================================================================== */
+const MIX_RATE = 48000;
+const MAX_SPEEDUP = 1.3;
+
+/* ---------- Audio DSP helpers (pure functions, unit-testable) ---------- */
+const DSP = {
+  // Remove leading/trailing silence, keeping a small padding.
+  trimSilence(pcm, sr, threshold = 0.02, padSec = 0.08) {
+    const win = Math.max(1, Math.round(sr * 0.02));
+    const rms = (from) => {
+      let sum = 0; const to = Math.min(pcm.length, from + win);
+      for (let i = from; i < to; i++) sum += pcm[i] * pcm[i];
+      return Math.sqrt(sum / Math.max(1, to - from));
+    };
+    let a = 0, b = pcm.length;
+    while (a < pcm.length && rms(a) < threshold) a += win;
+    while (b > a && rms(Math.max(a, b - win)) < threshold) b -= win;
+    if (b <= a) return new Float32Array(0);
+    const pad = Math.round(sr * padSec);
+    return pcm.slice(Math.max(0, a - pad), Math.min(pcm.length, b + pad));
+  },
+  peak(pcm) { let p = 0; for (let i = 0; i < pcm.length; i++) { const a = Math.abs(pcm[i]); if (a > p) p = a; } return p; },
+  // WSOLA time-stretch: rate > 1 makes audio shorter/faster without changing pitch.
+  timeStretch(input, rate, sr) {
+    if (rate <= 1.001 || input.length < sr * 0.1) return input.slice();
+    const win = Math.round(sr * 0.03);
+    const hopOut = Math.round(win / 2);
+    const hopIn = hopOut * rate;
+    const tol = Math.round(sr * 0.01);
+    const hann = new Float32Array(win);
+    for (let i = 0; i < win; i++) hann[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (win - 1));
+    const outLen = Math.ceil(input.length / rate) + win;
+    const out = new Float32Array(outLen);
+    const norm = new Float32Array(outLen);
+    let outPos = 0, prev = 0, k = 0;
+    while (true) {
+      const nominal = Math.round(k * hopIn);
+      if (nominal + win + tol >= input.length || outPos + win >= outLen) break;
+      let best = nominal;
+      if (k > 0) {
+        // Find the offset whose start best continues the previously used frame.
+        const target = prev + hopOut;
+        let bestScore = -Infinity;
+        const lo = Math.max(0, nominal - tol), hi = Math.min(input.length - win - 1, nominal + tol);
+        for (let c = lo; c <= hi; c += 2) {
+          let score = 0;
+          for (let j = 0; j < hopOut; j += 4) score += input[c + j] * input[target + j];
+          if (score > bestScore) { bestScore = score; best = c; }
+        }
+      }
+      for (let j = 0; j < win; j++) { out[outPos + j] += input[best + j] * hann[j]; norm[outPos + j] += hann[j]; }
+      prev = best; outPos += hopOut; k++;
+    }
+    const len = Math.min(outLen, outPos + hopOut);
+    for (let i = 0; i < len; i++) if (norm[i] > 1e-3) out[i] /= norm[i];
+    return out.subarray(0, len).slice();
+  },
+  // Merge [a,b] intervals that are closer than `gap` seconds.
+  mergeIntervals(list, gap) {
+    const s = list.slice().sort((x, y) => x[0] - y[0]);
+    const out = [];
+    for (const it of s) {
+      const last = out[out.length - 1];
+      if (last && it[0] - last[1] < gap) last[1] = Math.max(last[1], it[1]);
+      else out.push([it[0], it[1]]);
+    }
+    return out;
+  },
+};
+
+/* ---------- Dub timing: slot = time until the next sentence starts ---------- */
+const DubFit = {
+  slot(s) {
+    const i = state.segments.indexOf(s);
+    const next = state.segments[i + 1];
+    const end = next ? next.start : (state.duration || s.end);
+    return Math.max(0.5, end - s.start);
+  },
+  info(s) {
+    if (!s.dub) return null;
+    const slot = this.slot(s), need = s.dub.dur / slot;
+    const rate = need <= 1 ? 1 : Math.min(need, MAX_SPEEDUP);
+    return { slot, need, rate, outDur: s.dub.dur / rate, fits: need <= MAX_SPEEDUP };
+  },
+  // Stretched PCM, cached per rate.
+  clip(s) {
+    const f = this.info(s);
+    if (!f) return null;
+    if (!s.dub.cache || Math.abs(s.dub.cache.rate - f.rate) > 1e-3) {
+      s.dub.cache = { rate: f.rate, pcm: DSP.timeStretch(s.dub.pcm, f.rate, s.dub.sr) };
+    }
+    return { pcm: s.dub.cache.pcm, sr: s.dub.sr, start: s.start };
+  },
+};
+
+/* ---------- Original audio (full quality, decoded once per file) ---------- */
+const OrigAudio = {
+  buf: undefined, // undefined = not loaded, null = no usable audio track
+  pending: null,
+  reset() { this.buf = undefined; this.pending = null; },
+  async get() {
+    if (this.buf !== undefined) return this.buf;
+    if (this.pending) return this.pending;
+    this.pending = (async () => {
+      try {
+        const data = await state.file.arrayBuffer();
+        const ctx = new OfflineAudioContext(2, 1, MIX_RATE);
+        this.buf = await ctx.decodeAudioData(data);
+      } catch (e) {
+        this.buf = null; // video without an audio track (or undecodable): dub over silence
+      }
+      this.pending = null;
+      return this.buf;
+    })();
+    return this.pending;
+  },
+};
+
+/* ---------- Mixer: ducked original + dub clips, rendered offline ---------- */
+const Mix = {
+  buf: null, dirty: true,
+  invalidate() { this.dirty = true; this.buf = null; Preview.onMixChanged(); },
+  levels() {
+    return {
+      orig: Number($('lvOrig').value) / 100,
+      duck: Number($('lvDuck').value) / 100,
+      dub: Number($('lvDub').value) / 100,
+    };
+  },
+  dubbed() { return state.segments.filter((s) => s.dub && s.dub.dur > 0); },
+  async render() {
+    const orig = await OrigAudio.get();
+    const L = this.levels();
+    const clips = this.dubbed().map((s) => DubFit.clip(s));
+    let dur = state.duration || (orig ? orig.duration : 0);
+    clips.forEach((c) => { dur = Math.max(dur, c.start + c.pcm.length / c.sr); });
+    dur = Math.max(dur, 0.5);
+    const off = new OfflineAudioContext(2, Math.ceil(dur * MIX_RATE), MIX_RATE);
+    // Gentle limiter so loud dubs over music do not clip.
+    const limiter = off.createDynamicsCompressor();
+    limiter.threshold.value = -3; limiter.knee.value = 3; limiter.ratio.value = 12;
+    limiter.attack.value = 0.003; limiter.release.value = 0.15;
+    limiter.connect(off.destination);
+    if (orig) {
+      const src = off.createBufferSource();
+      src.buffer = orig;
+      const g = off.createGain();
+      g.gain.setValueAtTime(L.orig, 0);
+      const ducked = L.orig * L.duck;
+      const spans = DSP.mergeIntervals(clips.map((c) => [c.start, c.start + c.pcm.length / c.sr]), 0.6);
+      spans.forEach(([a, b]) => {
+        g.gain.setValueAtTime(L.orig, Math.max(0, a - 0.15));
+        g.gain.linearRampToValueAtTime(ducked, Math.max(0.001, a));
+        g.gain.setValueAtTime(ducked, b);
+        g.gain.linearRampToValueAtTime(L.orig, b + 0.3);
+      });
+      src.connect(g).connect(limiter);
+      src.start(0);
+    }
+    clips.forEach((c) => {
+      if (!c.pcm.length) return;
+      const b = off.createBuffer(1, c.pcm.length, c.sr);
+      b.copyToChannel(c.pcm, 0);
+      const src = off.createBufferSource();
+      src.buffer = b;
+      const g = off.createGain();
+      g.gain.value = L.dub;
+      src.connect(g).connect(limiter);
+      src.start(c.start);
+    });
+    this.buf = await off.startRendering();
+    this.dirty = false;
+    return this.buf;
+  },
+  async get() { if (this.dirty || !this.buf) await this.render(); return this.buf; },
+};
+
+/* ---------- Preview: play the mixed audio in sync with the (muted) video ---------- */
+const Preview = {
+  ctx: null, src: null, suspended: false, startToken: 0,
+  mode() { const r = document.querySelector('input[name="audioMode"]:checked'); return r ? r.value : 'orig'; },
+  setMode(m) { const r = document.querySelector('input[name="audioMode"][value="' + m + '"]'); if (r && !r.checked) { r.checked = true; this.apply(); } },
+  ensureCtx() {
+    if (!this.ctx) { const AC = window.AudioContext || window.webkitAudioContext; this.ctx = new AC({ latencyHint: 'playback' }); }
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    return this.ctx;
+  },
+  init() {
+    const v = $('video');
+    document.querySelectorAll('input[name="audioMode"]').forEach((r) => r.addEventListener('change', () => {
+      if (this.mode() === 'dub' && !Mix.dubbed().length) UI.toast('Henüz dublaj kaydı yok; orijinal ses kısılmadan çalar');
+      this.ensureCtx(); this.apply(); Export.summary();
+    }));
+    v.addEventListener('playing', () => this.sync());
+    ['pause', 'seeking', 'waiting', 'ended', 'emptied'].forEach((ev) => v.addEventListener(ev, () => this.stopSource()));
+    v.addEventListener('ratechange', () => { if (this.src) this.src.playbackRate.value = v.playbackRate; });
+    v.addEventListener('play', () => { if (this.mode() === 'dub') this.ensureCtx(); });
+  },
+  apply() {
+    const v = $('video');
+    if (this.suspended) return;
+    v.muted = this.mode() === 'dub';
+    this.stopSource();
+    if (!v.paused) this.sync();
+  },
+  stopSource() { this.startToken++; if (this.src) { try { this.src.stop(); } catch (e) {} this.src.disconnect(); this.src = null; } },
+  async sync() {
+    const v = $('video');
+    if (this.suspended || this.mode() !== 'dub' || v.paused) return;
+    this.stopSource();
+    const token = this.startToken;
+    const ctx = this.ensureCtx();
+    let buf;
+    try { buf = await Mix.get(); } catch (e) { UI.toast('Dublaj sesi hazırlanamadı'); return; }
+    if (token !== this.startToken || v.paused || this.mode() !== 'dub') return;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = v.playbackRate;
+    src.connect(ctx.destination);
+    src.start(0, Math.min(v.currentTime, buf.duration));
+    this.src = src;
+  },
+  onMixChanged() { if (this.src) this.sync(); },
+  suspend(on) {
+    this.suspended = on;
+    if (on) { this.stopSource(); $('video').muted = true; } else this.apply();
+  },
+};
+
+/* ---------- Microphone recording per sentence ---------- */
+const Recorder = {
+  stream: null, rec: null, activeId: null, phase: null, timer: null, guard: null, cancelled: false,
+  pickMime() {
+    if (!window.MediaRecorder) return null;
+    const list = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    return list.find((m) => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } }) || '';
+  },
+  async getStream() {
+    if (this.stream && this.stream.getAudioTracks().some((t) => t.readyState === 'live')) return this.stream;
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    return this.stream;
+  },
+  micError(e) {
+    const n = e && e.name;
+    if (n === 'NotAllowedError' || n === 'SecurityError') return 'Mikrofon izni verilmedi. Adres çubuğundaki kilit simgesinden mikrofona izin ver ve tekrar dene.';
+    if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'Mikrofon bulunamadı. Bir mikrofon (veya kulaklık) bağlı olduğundan emin ol.';
+    if (n === 'NotReadableError') return 'Mikrofon başka bir uygulama tarafından kullanılıyor. O uygulamayı kapatıp tekrar dene.';
+    return 'Mikrofon açılamadı: ' + (e && e.message || n || 'bilinmiyor');
+  },
+  busyReason() {
+    if (state.busy) return 'Yazıya dökme sürüyor';
+    if (state.translating) return 'Çeviri sürüyor';
+    if (Export.running) return 'Dışa aktarma sürüyor';
+    return null;
+  },
+  async toggle(id) {
+    if (this.activeId != null) { if (this.activeId === id) this.stop(); else UI.toast('Önce devam eden kaydı bitir'); return; }
+    const why = this.busyReason();
+    if (why) { UI.toast(why + '; bitince kaydedebilirsin'); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || this.pickMime() === null) {
+      UI.alert('err', 'Bu tarayıcı ses kaydını desteklemiyor. Güncel Chrome kullan.', 'dubAlerts'); return;
+    }
+    const s = Segments.get(id);
+    if (!s) return;
+    if (s.dub && !confirm('Bu cümlenin mevcut kaydı silinip yenisi alınacak. Devam edilsin mi?')) return;
+    UI.clearAlerts('dubAlerts');
+    let stream;
+    try { stream = await this.getStream(); }
+    catch (e) { UI.alert('err', this.micError(e), 'dubAlerts'); $('dubPanel').open = true; return; }
+
+    this.activeId = id; this.cancelled = false; this.phase = 'countdown';
+    const v = $('video');
+    Player.stop(); v.pause();
+    Preview.suspend(true);
+    Segments.dubUI(id);
+    v.currentTime = s.start;
+    if (window.matchMedia('(max-width: 999px)').matches) $('videoStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // 3-2-1 countdown on top of the video.
+    const co = $('countOverlay');
+    co.classList.remove('hidden');
+    for (const n of [3, 2, 1]) {
+      co.textContent = n; Segments.dubUI(id, 'Hazırlan… ' + n);
+      await Util.sleep(650);
+      if (this.cancelled) { co.classList.add('hidden'); this.finish(); return; }
+    }
+    co.classList.add('hidden');
+
+    const mime = this.pickMime();
+    const chunks = [];
+    try { this.rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined); }
+    catch (e) { UI.alert('err', 'Kayıt başlatılamadı: ' + e.message, 'dubAlerts'); this.finish(); return; }
+    this.rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise((r) => { this.rec.onstop = r; });
+    this.rec.start(250);
+    this.phase = 'recording';
+    $('recBadge').classList.remove('hidden');
+    const t0 = performance.now();
+    const slotEnd = s.start + DubFit.slot(s);
+    v.play().catch(() => {});
+    this.timer = setInterval(() => {
+      const el = (performance.now() - t0) / 1000;
+      Segments.dubUI(id, 'Kaydediliyor ' + el.toFixed(1) + ' sn, bitince düğmeye bas');
+      if (!v.paused && v.currentTime >= slotEnd) v.pause();
+    }, 100);
+    // Safety stop so a forgotten recording does not run forever.
+    this.guard = setTimeout(() => this.stop(), Math.max(8, DubFit.slot(s) * 2 + 4) * 1000);
+
+    await stopped;
+    clearInterval(this.timer); clearTimeout(this.guard);
+    $('recBadge').classList.add('hidden');
+    v.pause();
+    if (this.cancelled) { this.finish(); return; }
+    Segments.dubUI(id, 'İşleniyor…');
+    try {
+      const blob = new Blob(chunks, { type: this.rec.mimeType || mime || 'audio/webm' });
+      const ab = await blob.arrayBuffer();
+      const decoded = await new OfflineAudioContext(1, 1, MIX_RATE).decodeAudioData(ab);
+      const raw = decoded.getChannelData(0);
+      let pcm = DSP.trimSilence(raw, decoded.sampleRate);
+      if (pcm.length < decoded.sampleRate * 0.15) {
+        UI.alert('warn', 'Kayıtta ses algılanmadı. Mikrofonun açık ve sesinin yeterince yüksek olduğundan emin olup tekrar kaydet.', 'dubAlerts');
+        $('dubPanel').open = true;
+      } else {
+        // Normalize quiet recordings (up to +12 dB).
+        const pk = DSP.peak(pcm);
+        if (pk > 0 && pk < 0.7) { const gain = Math.min(0.89 / pk, 4); pcm = pcm.map((x) => x * gain); }
+        s.dub = { pcm, sr: decoded.sampleRate, dur: pcm.length / decoded.sampleRate, cache: null };
+        Mix.invalidate();
+        const f = DubFit.info(s);
+        if (!f.fits) UI.toast('Kayıt cümleye sığmıyor; daha hızlı okuyup tekrar kaydedebilirsin');
+      }
+    } catch (e) {
+      UI.alert('err', 'Kayıt işlenemedi: ' + (e && e.message || e), 'dubAlerts');
+    }
+    this.finish();
+  },
+  stop() {
+    if (this.phase === 'countdown') { this.cancelled = true; return; }
+    if (this.rec && this.rec.state !== 'inactive') this.rec.stop();
+  },
+  cancel() { if (this.activeId == null) return; this.cancelled = true; this.stop(); },
+  finish() {
+    const id = this.activeId;
+    this.activeId = null; this.phase = null; this.rec = null;
+    $('countOverlay').classList.add('hidden');
+    $('recBadge').classList.add('hidden');
+    Preview.suspend(false);
+    if (id != null) Segments.dubUI(id);
+    Dub.refresh();
+  },
+};
+
+/* ---------- Dub panel (levels, counts, clear) ---------- */
+const Dub = {
+  init() {
+    const lv = [['lvOrig', 'lvOrigOut'], ['lvDuck', 'lvDuckOut'], ['lvDub', 'lvDubOut']];
+    lv.forEach(([id, out]) => {
+      const el = $(id);
+      const saved = Util.store.get(id);
+      if (saved !== null && !isNaN(saved)) el.value = saved;
+      $(out).textContent = el.value + '%';
+      el.addEventListener('input', () => { $(out).textContent = el.value + '%'; });
+      el.addEventListener('change', () => { Util.store.set(id, el.value); Mix.invalidate(); });
+    });
+    $('dubPreviewBtn').addEventListener('click', () => {
+      const v = $('video');
+      Preview.setMode('dub');
+      Preview.ensureCtx();
+      v.currentTime = 0;
+      v.play().catch(() => {});
+      $('videoStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    $('dubClearBtn').addEventListener('click', () => {
+      const n = Mix.dubbed().length;
+      if (!n || !confirm(n + ' dublaj kaydı silinecek. Emin misin?')) return;
+      state.segments.forEach((s) => { s.dub = null; });
+      Mix.invalidate();
+      state.segments.forEach((s) => Segments.dubUI(s.id));
+      this.refresh();
+    });
+  },
+  refresh() {
+    const n = Mix.dubbed().length, total = state.segments.filter((s) => s.text.trim()).length;
+    $('dubCount').textContent = n + '/' + total + ' cümle kaydedildi';
+    $('dubClearBtn').disabled = !n;
+    Stepper.update();
+    Export.summary();
+  },
+  remove(id) {
+    const s = Segments.get(id);
+    if (!s || !s.dub) return;
+    if (!confirm('Bu cümlenin dublaj kaydı silinsin mi?')) return;
+    s.dub = null; Mix.invalidate(); Segments.dubUI(id); this.refresh();
+  },
+  listen(id) {
+    const s = Segments.get(id);
+    if (!s || !s.dub) return;
+    Preview.setMode('dub');
+    Preview.ensureCtx();
+    Player.playSegment(id, { untilSlot: true });
+  },
+};
+
+/* ---------- Subtitle styling shared by the live overlay and the export renderer ---------- */
+const SubStyle = {
+  SIZES: { s: 0.045, m: 0.058, l: 0.075 },
+  opts() {
+    const val = (n, d) => { const r = document.querySelector('input[name="' + n + '"]:checked'); return r ? r.value : d; };
+    return { size: val('subSize', 'm'), pos: val('subPos', 'bottom'), color: val('subColor', 'yellow') };
+  },
+  colorHex(c) { return c === 'white' ? '#ffffff' : '#ffd23f'; },
+  // Text shown at time t for the chosen subtitle mode.
+  textAt(t, mode) {
+    if (mode === 'off') return '';
+    const s = Sync.find(t);
+    if (!s) return '';
+    if (mode === 'orig') return s.text.trim();
+    return (s.translation || '').trim() || s.text.trim();
+  },
+  init() {
+    ['subSize', 'subPos', 'subColor'].forEach((n) => {
+      const saved = Util.store.get(n);
+      const el = saved && document.querySelector('input[name="' + n + '"][value="' + saved + '"]');
+      if (el) el.checked = true;
+      document.querySelectorAll('input[name="' + n + '"]').forEach((r) => r.addEventListener('change', () => {
+        Util.store.set(n, r.value); this.applyOverlay();
+      }));
+    });
+    if (window.ResizeObserver) new ResizeObserver(() => this.applyOverlay()).observe($('video'));
+    this.applyOverlay();
+  },
+  applyOverlay() {
+    const v = $('video'), ov = $('subOverlay'), o = this.opts();
+    const w = v.clientWidth || 640, h = v.clientHeight || 360;
+    ov.style.fontSize = Math.max(12, Math.round(Math.min(w, h) * this.SIZES[o.size])) + 'px';
+    ov.style.color = this.colorHex(o.color);
+    ov.style.top = ov.style.bottom = '';
+    ov.style.transform = 'translateX(-50%)';
+    if (o.pos === 'top') ov.style.top = '7%';
+    else if (o.pos === 'middle') { ov.style.top = '50%'; ov.style.transform = 'translate(-50%,-50%)'; }
+    else ov.style.bottom = 'max(64px, 16%)';
+  },
+  wrap(ctx, text, maxW) {
+    const lines = [];
+    text.split('\n').forEach((para) => {
+      let cur = '';
+      para.split(/\s+/).filter(Boolean).forEach((w) => {
+        const t = cur ? cur + ' ' + w : w;
+        if (ctx.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; }
+      });
+      if (cur) lines.push(cur);
+    });
+    return lines.slice(0, 3);
+  },
+  // Draw a subtitle box onto a canvas (used for the exported video).
+  draw(ctx, text, W, H) {
+    if (!text) return;
+    const o = this.opts();
+    const px = Math.max(14, Math.round(Math.min(W, H) * this.SIZES[o.size]));
+    ctx.font = '700 ' + px + 'px Onest, system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lines = this.wrap(ctx, text, W * 0.86);
+    const lh = px * 1.3, padX = px * 0.55, padY = px * 0.3;
+    const boxH = lines.length * lh + padY * 2;
+    let top;
+    if (o.pos === 'top') top = H * 0.06;
+    else if (o.pos === 'middle') top = (H - boxH) / 2;
+    else top = H * 0.92 - boxH;
+    const boxW = Math.max(...lines.map((l) => ctx.measureText(l).width)) + padX * 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.74)';
+    const x = (W - boxW) / 2, r = px * 0.35;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, top, boxW, boxH, r); else ctx.rect(x, top, boxW, boxH);
+    ctx.fill();
+    ctx.fillStyle = this.colorHex(o.color);
+    lines.forEach((l, i) => ctx.fillText(l, W / 2, top + padY + lh * i + lh / 2));
+  },
+};
+
+/* ---------- Export: canvas + MediaRecorder (real time), MP4 when supported ---------- */
+const Export = {
+  running: false, cancelled: false, resultUrl: null,
+  pickMime() {
+    if (!window.MediaRecorder) return null;
+    const list = [
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4',
+      'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm',
+    ];
+    return list.find((m) => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } }) || null;
+  },
+  init() {
+    $('expBtn').addEventListener('click', () => this.run());
+    $('expCancelBtn').addEventListener('click', () => this.cancel());
+    document.querySelectorAll('input[name="subMode"]').forEach((r) => r.addEventListener('change', () => this.summary()));
+    this.summary();
+  },
+  summary() {
+    const sub = { off: 'yok', orig: 'orijinal', tr: 'Türkçe' }[Sync.mode()];
+    const dubs = Mix.dubbed().length;
+    const audio = Preview.mode() === 'dub' ? (dubs ? 'dublajlı (' + dubs + ' cümle)' : 'dublajlı seçili ama kayıt yok, orijinal ses kullanılır') : 'orijinal';
+    const mime = this.pickMime();
+    const fmt = !mime ? 'bu tarayıcı video kaydını desteklemiyor' : mime.startsWith('video/mp4') ? 'MP4' : 'WebM (bu tarayıcı MP4 kaydedemiyor)';
+    $('expSummary').textContent = 'Altyazı: ' + sub + '. Ses: ' + audio + '. Biçim: ' + fmt +
+      '. Altyazı ve ses seçimini videonun altındaki düğmelerden değiştirebilirsin. Dışa aktarma videonun süresi kadar sürer; bu sırada sekmeyi açık tut ve ekranı kapatma.';
+    $('expBtn').disabled = !mime || this.running;
+  },
+  setRunning(on) {
+    this.running = on;
+    $('expBtn').classList.toggle('hidden', on);
+    $('expCancelBtn').classList.toggle('hidden', !on);
+    $('expCanvas').classList.toggle('hidden', !on);
+    $('startBtn').disabled = on || !state.file || state.busy;
+    $('fileInput').disabled = on;
+    this.summary();
+  },
+  cancel() { this.cancelled = true; },
+  async run() {
+    if (this.running) return;
+    const why = state.busy ? 'Yazıya dökme sürüyor' : state.translating ? 'Çeviri sürüyor' : Recorder.activeId != null ? 'Kayıt sürüyor' : null;
+    if (why) { UI.toast(why + '; bitince dışa aktar'); return; }
+    const mime = this.pickMime();
+    if (!mime || !HTMLCanvasElement.prototype.captureStream) { UI.alert('err', 'Bu tarayıcı video dışa aktarmayı desteklemiyor. Güncel Chrome kullan.', 'expAlerts'); return; }
+    const subMode = Sync.mode();
+    if (subMode === 'tr') {
+      const miss = state.segments.filter((s) => s.text.trim() && !(s.translation || '').trim()).length;
+      if (miss && !confirm(miss + ' cümlenin Türkçe çevirisi yok; bu cümlelerde orijinal metin gösterilecek. Devam edilsin mi?')) return;
+    }
+    UI.clearAlerts('expAlerts');
+    $('expResult').classList.add('hidden');
+    if (this.resultUrl) { URL.revokeObjectURL(this.resultUrl); this.resultUrl = null; }
+    // Create the audio context inside the click so it is allowed to start.
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const actx = new AC({ sampleRate: MIX_RATE });
+    actx.resume().catch(() => {});
+    this.cancelled = false;
+    this.setRunning(true);
+    const main = $('video');
+    main.pause();
+    let v = null, audioSrc = null, raf = null, rec = null;
+    try {
+      UI.stage('stExp', { status: 'Ses hazırlanıyor…', indet: true });
+      const useDub = Preview.mode() === 'dub' && Mix.dubbed().length > 0;
+      const audioBuf = useDub ? await Mix.get() : await OrigAudio.get();
+      if (this.cancelled) throw Object.assign(new Error('cancelled'), { kind: 'cancelled' });
+
+      // Hidden source video (muted); frames are drawn to the canvas with the subtitles.
+      v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = state.videoUrl;
+      v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+      document.body.appendChild(v);
+      await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('video')); });
+      const dur = isFinite(v.duration) && v.duration > 0 ? v.duration : state.duration;
+      const maxSide = window.matchMedia('(pointer: coarse)').matches ? 1280 : 1920;
+      const sc = Math.min(1, maxSide / Math.max(v.videoWidth, v.videoHeight));
+      const W = Math.round(v.videoWidth * sc / 2) * 2, H = Math.round(v.videoHeight * sc / 2) * 2;
+      if (!W || !H) throw new Error('Video boyutu okunamadı');
+      const cv = $('expCanvas');
+      cv.width = W; cv.height = H;
+      const g = cv.getContext('2d');
+      try { await document.fonts.load('700 20px Onest'); } catch (e) {}
+
+      const vStream = cv.captureStream(30);
+      const tracks = [...vStream.getVideoTracks()];
+      if (audioBuf) {
+        const dest = actx.createMediaStreamDestination();
+        audioSrc = actx.createBufferSource();
+        audioSrc.buffer = audioBuf;
+        audioSrc.connect(dest);
+        tracks.push(...dest.stream.getAudioTracks());
+      }
+      const stream = new MediaStream(tracks);
+      const chunks = [];
+      rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: W * H > 1280 * 720 ? 8e6 : 5e6, audioBitsPerSecond: 160000 });
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      const stopped = new Promise((r) => { rec.onstop = r; });
+
+      v.currentTime = 0;
+      await new Promise((r) => { v.onseeked = r; setTimeout(r, 1500); });
+      const draw = () => {
+        g.drawImage(v, 0, 0, W, H);
+        SubStyle.draw(g, SubStyle.textAt(v.currentTime, subMode), W, H);
+      };
+      draw();
+      rec.start(1000);
+      await v.play();
+      if (audioSrc) audioSrc.start(0, Math.min(v.currentTime, audioSrc.buffer.duration));
+      await new Promise((resolve) => {
+        const loop = () => {
+          draw();
+          const pct = dur ? (v.currentTime / dur) * 100 : 0;
+          UI.stage('stExp', { status: Math.round(pct) + '% (' + Util.fmtTime(v.currentTime) + ' / ' + Util.fmtTime(dur) + ')', pct });
+          if (this.cancelled || v.ended || (dur && v.currentTime >= dur - 0.02)) { resolve(); return; }
+          raf = requestAnimationFrame(loop);
+        };
+        v.onended = () => resolve();
+        raf = requestAnimationFrame(loop);
+      });
+      draw();
+      cancelAnimationFrame(raf);
+      rec.stop();
+      await stopped;
+      if (this.cancelled) throw Object.assign(new Error('cancelled'), { kind: 'cancelled' });
+      const blob = new Blob(chunks, { type: mime.split(';')[0] });
+      const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+      this.resultUrl = URL.createObjectURL(blob);
+      const name = Util.baseName(state.file.name) + '_dubyaz.' + ext;
+      UI.stage('stExp', { status: 'Tamam', done: true });
+      const box = $('expResult');
+      box.innerHTML = '';
+      const a = document.createElement('a');
+      a.className = 'btn primary'; a.href = this.resultUrl; a.download = name;
+      a.textContent = 'İndir (' + Util.fmtBytes(blob.size) + ', ' + ext.toUpperCase() + ')';
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = ext === 'mp4'
+        ? 'Video hazır. İndirdikten sonra YouTube veya TikTok\'a yükleyebilirsin.'
+        : 'Video WebM olarak hazır. YouTube WebM kabul eder; TikTok kabul etmezse masaüstü Chrome\'da dışa aktarmayı dene (MP4 verebilir).';
+      box.append(a, note);
+      box.classList.remove('hidden');
+      UI.toast('Video hazır');
+    } catch (e) {
+      if (e && e.kind === 'cancelled') UI.stage('stExp', { status: 'Durduruldu', pct: 0 });
+      else {
+        UI.stage('stExp', { status: 'Hata', fail: true });
+        const m = String(e && e.message || e);
+        UI.alert('err', /memory|allocation/i.test(m)
+          ? 'Bellek yetersiz kaldı. Daha kısa bir video dene veya diğer sekmeleri kapat.'
+          : 'Dışa aktarma başarısız: ' + m, 'expAlerts');
+      }
+    } finally {
+      cancelAnimationFrame(raf);
+      try { if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) {}
+      try { if (audioSrc) audioSrc.stop(); } catch (e) {}
+      try { actx.close(); } catch (e) {}
+      if (v) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }
+      this.setRunning(false);
+    }
+  },
+};
+
 /* ---------- Settings (remembered in localStorage) ---------- */
 const Settings = {
   init() {
@@ -1618,8 +2405,15 @@ const Settings = {
   if (em) em.checked = true;
   document.querySelectorAll('input[name="exportMode"]').forEach((r) => r.addEventListener('change', () => Util.store.set('exportMode', Exporter.mode())));
   Sync.init();
+  SubStyle.init();
+  Preview.init();
+  Dub.init();
+  Export.init();
   Stepper.init();
   Stepper.update();
+  window.addEventListener('beforeunload', (e) => {
+    if (Export.running || Recorder.activeId != null || Mix.dubbed().length) { e.preventDefault(); e.returnValue = ''; }
+  });
   window.addEventListener('beforeunload', (e) => { if (state.translating) { e.preventDefault(); e.returnValue = ''; } });
   window.addEventListener('beforeunload', (e) => { if (state.busy) { e.preventDefault(); e.returnValue = ''; } });
   if (!window.isSecureContext) UI.alert('warn', 'Sayfa https üzerinden açılmadı. Model önbelleği ve kopyalama düzgün çalışmayabilir.');

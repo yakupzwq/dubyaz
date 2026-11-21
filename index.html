@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15121c">
+<title>DubYaz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ Tokens ============ */
+  :root{
+    --ink:#15121c; --surface:#1e1928; --surface2:#282133; --line:#3a3149; --line2:#4a3f5c;
+    --text:#f1ecf6; --muted:#a99fba; --dim:#7d7290;
+    --sub:#ffd23f; --sub-ink:#2a2100; --rec:#ff5a5f; --ok:#5fd3a5; --info:#9fb4ff;
+    --r-lg:22px; --r-md:14px; --r-sm:10px;
+    --display:"Bricolage Grotesque",system-ui,sans-serif;
+    --body:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.5}
+  body{background:
+    radial-gradient(900px 500px at 85% -10%, rgba(255,210,63,.07), transparent 60%),
+    radial-gradient(700px 500px at -10% 110%, rgba(159,180,255,.06), transparent 60%), var(--ink);
+    min-height:100vh;padding-bottom:var(--safe-b)}
+  button,select,textarea,input{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--sub);outline-offset:2px}
+  .hidden{display:none !important}
+  h1,h2,h3{font-family:var(--display);font-weight:800;letter-spacing:-.01em;margin:0}
+  @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;scroll-behavior:auto !important}}
+
+  /* ============ Top bar + stepper ============ */
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;padding:12px 20px;
+    background:rgba(21,18,28,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .brand svg{width:34px;height:34px}
+  .brand b{font-family:var(--display);font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+  .steps{display:flex;gap:6px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+  .steps::-webkit-scrollbar{display:none}
+  .step{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:99px;border:1px solid transparent;
+    background:none;cursor:pointer;color:var(--dim);font-weight:600;font-size:.9rem;white-space:nowrap;min-height:40px}
+  .step i{font-style:normal;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line2);font-size:.85rem}
+  .step.active{color:var(--text);border-color:var(--line2);background:var(--surface)}
+  .step.active i{border-color:var(--sub);color:var(--sub)}
+  .step.done{color:var(--muted)}
+  .step.done i{background:var(--sub);border-color:var(--sub);color:var(--sub-ink)}
+  @media (max-width:700px){
+    .topbar{padding:10px 12px;gap:10px}
+    .brand b{display:none}
+    .step{padding:4px;font-size:0}
+    .step.active{font-size:.85rem;padding-right:12px}
+  }
+
+  /* ============ Layout ============ */
+  .studio{display:grid;grid-template-columns:1fr;gap:20px;padding:20px;max-width:1440px;margin:0 auto}
+  @media (min-width:1000px){
+    .studio{grid-template-columns:minmax(400px,5fr) minmax(460px,6fr);align-items:start;gap:28px;padding:28px}
+    .col-stage{position:sticky;top:86px;max-height:calc(100vh - 100px);overflow-y:auto;scrollbar-width:thin}
+  }
+  @media (max-width:600px){.studio{padding:12px;gap:14px}}
+  .col-stage,.col-script{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px}
+  @media (max-width:600px){.panel{padding:14px;border-radius:18px}}
+  .panel-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+  .panel-head h2{font-size:1.25rem}
+  .panel-head .sidenote{color:var(--muted);font-size:.9rem;margin-left:auto}
+  @media (max-width:600px){.panel-head{flex-wrap:wrap}.panel-head .sidenote{margin-left:0;width:100%}}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:420px){.grid2{grid-template-columns:1fr}}
+
+  /* ============ Controls ============ */
+  .field{display:flex;flex-direction:column;gap:6px;font-size:.88rem;color:var(--muted);font-weight:500}
+  select,input[type=email]{appearance:none;-webkit-appearance:none;width:100%;min-height:50px;padding:12px 14px;border-radius:var(--r-md);
+    background:var(--surface2);border:1px solid var(--line);color:var(--text);font-size:1rem}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a99fba' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+  select:focus,input:focus{outline:none;border-color:var(--sub)}
+  select:disabled{opacity:.55}
+  .btn{min-height:50px;padding:10px 18px;border-radius:var(--r-md);border:1px solid var(--line2);background:var(--surface2);
+    font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;touch-action:manipulation;
+    transition:background .15s,border-color .15s,transform .08s}
+  .btn:hover{border-color:var(--muted)}
+  .btn:active{transform:scale(.98)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .btn svg{width:18px;height:18px;flex-shrink:0}
+  .btn.primary{background:var(--sub);border-color:var(--sub);color:var(--sub-ink);font-weight:700}
+  .btn.primary:hover{background:#ffdd66}
+  .btn.primary:disabled{background:var(--surface2);border-color:var(--line);color:var(--dim);opacity:1}
+  .btn.stop{background:transparent;border-color:var(--rec);color:var(--rec)}
+  .btn.wide{width:100%}
+  .btn.sm{min-height:42px;padding:8px 14px;font-size:.92rem;border-radius:var(--r-sm)}
+  .icon-btn{width:42px;height:42px;min-height:0;padding:0;border-radius:12px;background:transparent;border-color:transparent;color:var(--muted)}
+  .icon-btn:hover{background:var(--surface2);border-color:var(--line);color:var(--text)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .actions .btn{flex:1 1 150px}
+  .seg-ctl{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+  .seg-ctl label{position:relative;cursor:pointer}
+  .seg-ctl input{position:absolute;opacity:0;pointer-events:none}
+  .seg-ctl span{display:block;padding:7px 12px;border-radius:9px;font-size:.88rem;font-weight:600;color:var(--muted);white-space:nowrap}
+  .seg-ctl input:checked + span{background:var(--ink);color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+  .seg-ctl input:focus-visible + span{outline:2px solid var(--sub)}
+  .check{display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--muted);cursor:pointer;min-height:40px}
+  .check input{width:20px;height:20px;accent-color:var(--sub)}
+  .hint{font-size:.88rem;color:var(--muted);line-height:1.5}
+
+  /* ============ Drop zone (empty state hero) ============ */
+  #dropZone{position:relative;border-radius:var(--r-lg);border:2px dashed var(--line2);padding:40px 24px 36px;text-align:center;cursor:pointer;
+    background:linear-gradient(180deg,var(--surface),rgba(30,25,40,.4));transition:border-color .2s,background .2s;overflow:hidden}
+  #dropZone:hover,#dropZone.drag{border-color:var(--sub);background:linear-gradient(180deg,#262032,rgba(30,25,40,.5))}
+  #dropZone h1{font-size:clamp(1.7rem,4.5vw,2.4rem);line-height:1.1;max-width:14ch;margin:0 auto}
+  #dropZone p{color:var(--muted);max-width:40ch;margin:12px auto 22px}
+  .demo-sub{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 auto 26px}
+  .demo-sub span{background:rgba(0,0,0,.72);color:#fff;font-weight:600;padding:4px 12px;border-radius:6px;font-size:.95rem}
+  .demo-sub span:last-child{color:var(--sub)}
+  #dropZone .btn{pointer-events:none}
+  #dropZone.compact{padding:12px 16px;display:flex;align-items:center;gap:12px;text-align:left;border-style:solid;border-width:1px}
+  #dropZone.compact .demo-sub,#dropZone.compact h1,#dropZone.compact p{display:none}
+  #dropZone.compact .btn{min-height:40px;padding:6px 14px;font-size:.9rem;margin-left:auto}
+  #fileInfo{flex:1;min-width:0;display:flex;flex-direction:column}
+  #fileInfo b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #fileInfo small{color:var(--muted)}
+
+  /* ============ Video stage + subtitle overlay ============ */
+  #videoStage{display:flex;flex-direction:column;gap:12px}
+  .frame{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#000;border:1px solid var(--line)}
+  .frame video{display:block;width:100%;max-height:56vh;background:#000}
+  #subOverlay{position:absolute;left:50%;bottom:max(64px,16%);transform:translateX(-50%);width:max-content;max-width:88%;text-align:center;pointer-events:none;
+    font-weight:700;font-size:clamp(.95rem,2.6vw,1.25rem);line-height:1.3;color:#fff;background:rgba(0,0,0,.74);padding:6px 14px;border-radius:8px;
+    text-shadow:0 1px 2px #000;white-space:pre-wrap}
+  #subOverlay.tr{color:var(--sub)}
+  #subOverlay:empty{display:none}
+  .stage-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .stage-bar .lbl{color:var(--muted);font-size:.88rem}
+
+  /* ============ Alerts ============ */
+  .alerts{display:flex;flex-direction:column;gap:8px}
+  .alerts:not(:empty){margin-top:14px}
+  .alert{border-radius:var(--r-md);padding:11px 14px;font-size:.92rem;border-left:4px solid;background:var(--surface2)}
+  .alert.warn{border-color:var(--sub)}
+  .alert.err{border-color:var(--rec);background:rgba(255,90,95,.08)}
+  .alert.info{border-color:var(--info)}
+
+  /* ============ Progress ============ */
+  #progressCard{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:14px}
+  .stage{display:flex;flex-direction:column;gap:7px}
+  .stage-head{display:flex;justify-content:space-between;gap:10px;font-size:.9rem;font-weight:500}
+  .stage-head .st{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .bar{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:var(--sub);border-radius:99px;transition:width .25s}
+  .bar.indet > i{width:30%;animation:indet 1.2s infinite ease-in-out}
+  .stage.done .stage-head .st{color:var(--ok)}
+  .stage.done .bar > i{background:var(--ok)}
+  .stage.fail .bar > i{background:var(--rec);width:100%}
+  @keyframes indet{0%{transform:translateX(-110%)}100%{transform:translateX(360%)}}
+  #deviceInfo{font-size:.84rem;color:var(--dim)}
+  #liveText{font-size:.9rem;color:var(--muted);max-height:72px;overflow:hidden;white-space:pre-wrap;
+    -webkit-mask-image:linear-gradient(transparent,#000 40%);mask-image:linear-gradient(transparent,#000 40%)}
+
+  /* ============ Script column ============ */
+  .script-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .script-head h2{font-size:1.5rem}
+  #segCount{color:var(--muted);font-weight:500}
+  .export-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .export-bar .btns{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+  @media (max-width:600px){.export-bar .seg-ctl{width:100%}.export-bar .seg-ctl label{flex:1;text-align:center}.export-bar .btns{width:100%;margin-left:0}.export-bar .btns .btn{flex:1}}
+
+  details.tr-panel > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px}
+  details.tr-panel > summary::-webkit-details-marker{display:none}
+  details.tr-panel > summary h2{font-size:1.25rem}
+  details.tr-panel > summary .chev{margin-left:auto;transition:transform .2s;color:var(--muted)}
+  details.tr-panel[open] > summary .chev{transform:rotate(180deg)}
+  .tr-body{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+
+  /* ============ Segment timeline ============ */
+  #segList{position:relative;display:flex;flex-direction:column;gap:12px}
+  .empty{text-align:center;padding:48px 16px;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r-lg)}
+  .empty b{display:block;color:var(--text);font-family:var(--display);font-size:1.2rem;margin-bottom:6px}
+  .seg{display:grid;grid-template-columns:76px 1fr;gap:0 14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 12px 14px 14px;
+    transition:border-color .2s,background .2s}
+  .seg.live{border-color:rgba(255,210,63,.55);background:#231d2c}
+  .seg.playing{border-color:var(--sub)}
+  .seg-rail{display:flex;flex-direction:column;gap:2px;padding-top:4px}
+  .seg-rail .t1{font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums;font-size:1rem}
+  .seg-rail .t2{color:var(--dim);font-variant-numeric:tabular-nums;font-size:.82rem}
+  .seg-rail .play{margin-top:8px;width:46px;height:46px;border-radius:50%;border:1px solid var(--line2);background:var(--surface2);display:grid;place-items:center;cursor:pointer;color:var(--text)}
+  .seg-rail .play:hover{border-color:var(--sub);color:var(--sub)}
+  .seg.playing .seg-rail .play{background:var(--sub);border-color:var(--sub);color:var(--sub-ink)}
+  .seg-rail .play svg{width:16px;height:16px}
+  .seg-body{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .line{display:flex;align-items:flex-start;gap:4px}
+  .line textarea{flex:1;min-width:0;resize:none;overflow:hidden;background:transparent;border:1px solid transparent;border-radius:var(--r-sm);
+    padding:8px 10px;line-height:1.45;font-size:1.02rem;min-height:44px}
+  .line textarea:hover{border-color:var(--line)}
+  .line textarea:focus{outline:none;border-color:var(--line2);background:var(--ink)}
+  .line.tr{border-top:1px solid var(--line);padding-top:6px}
+  .line.tr textarea{color:#fff3c4}
+  .line.tr textarea:focus{border-color:rgba(255,210,63,.6)}
+  .line.tr textarea::placeholder{color:var(--dim)}
+  .tag{flex-shrink:0;margin-top:10px;font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--muted)}
+  .line.tr .tag{background:rgba(255,210,63,.14);color:var(--sub)}
+  .seg.translating .line.tr textarea{opacity:.4}
+  .line .icon-btn svg{width:18px;height:18px}
+  @media (max-width:480px){
+    .seg{grid-template-columns:1fr;padding:12px}
+    .seg-rail{flex-direction:row;align-items:center;gap:8px;padding:0 0 6px}
+    .seg-rail .t2::before{content:"– "}
+    .seg-rail .play{margin:0 0 0 auto;width:42px;height:42px}
+  }
+
+  /* ============ Footer note + toast ============ */
+  .foot{color:var(--dim);font-size:.84rem;text-align:center;padding:4px 16px 28px}
+  #toast{position:fixed;left:50%;bottom:calc(22px + var(--safe-b));transform:translateX(-50%) translateY(16px);background:var(--text);color:var(--ink);
+    font-weight:600;padding:11px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.2s;z-index:50;max-width:90vw;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="3" width="32" height="24" rx="7" fill="#ffd23f"/><path d="M9 27l-2 6 8-6z" fill="#ffd23f"/><rect x="7" y="11" width="20" height="3" rx="1.5" fill="#2a2100"/><rect x="10" y="17" width="14" height="3" rx="1.5" fill="#2a2100"/></svg>
+    <b>DubYaz</b>
+  </div>
+  <nav class="steps" aria-label="Adımlar">
+    <button class="step active" data-step="1" data-target="dropZone"><i>1</i>Video</button>
+    <button class="step" data-step="2" data-target="asrPanel"><i>2</i>Yazıya dök</button>
+    <button class="step" data-step="3" data-target="trPanel"><i>3</i>Çevir</button>
+    <button class="step" data-step="4" data-target="scriptPanel"><i>4</i>Dışa aktar</button>
+  </nav>
+</header>
+
+<main class="studio">
+  <!-- ===== Left: video + transcription ===== -->
+  <section class="col-stage">
+    <div id="dropZone" role="button" tabindex="0" aria-label="Video seç">
+      <div class="demo-sub" aria-hidden="true"><span>Hey everyone, welcome back!</span><span>Herkese selam, tekrar hoş geldiniz!</span></div>
+      <h1>Videonu buraya bırak</h1>
+      <p>Konuşmalar yazıya dökülür ve Türkçeye çevrilir. Video hiçbir sunucuya gönderilmez, her şey bu tarayıcıda olur.</p>
+      <div id="fileInfo" class="hidden"></div>
+      <span class="btn primary">Video seç</span>
+    </div>
+    <input id="fileInput" type="file" accept="video/*" class="hidden">
+
+    <div id="videoStage" class="hidden">
+      <div class="frame">
+        <video id="video" controls playsinline preload="metadata"></video>
+        <div id="subOverlay" aria-live="off"></div>
+      </div>
+      <div class="stage-bar">
+        <span class="lbl">Altyazı önizleme</span>
+        <div class="seg-ctl" role="radiogroup" aria-label="Altyazı önizleme">
+          <label><input type="radio" name="subMode" value="off"><span>Kapalı</span></label>
+          <label><input type="radio" name="subMode" value="orig"><span>Orijinal</span></label>
+          <label><input type="radio" name="subMode" value="tr" checked><span>Türkçe</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div id="asrPanel" class="panel">
+      <div class="panel-head"><h2>Yazıya dök</h2><span class="sidenote">Telefonda kısa videolar daha hızlı</span></div>
+      <div class="grid2">
+        <label class="field">Videodaki konuşma dili
+          <select id="langSelect">
+            <option value="auto">Otomatik algıla</option>
+            <option value="english">İngilizce</option>
+            <option value="turkish">Türkçe</option>
+            <option value="spanish">İspanyolca</option>
+            <option value="german">Almanca</option>
+            <option value="french">Fransızca</option>
+            <option value="russian">Rusça</option>
+            <option value="arabic">Arapça</option>
+            <option value="japanese">Japonca</option>
+            <option value="korean">Korece</option>
+            <option value="portuguese">Portekizce</option>
+            <option value="italian">İtalyanca</option>
+          </select>
+        </label>
+        <label class="field">Kalite
+          <select id="modelSelect">
+            <option value="tiny">Hızlı (whisper-tiny)</option>
+            <option value="base">Daha iyi (whisper-base)</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="startBtn" class="btn primary wide" disabled>Yazıya dök</button>
+        <button id="cancelBtn" class="btn stop wide hidden">Durdur</button>
+      </div>
+      <div id="alerts" class="alerts"></div>
+      <div id="progressCard" class="hidden">
+        <div class="stage" id="stModel">
+          <div class="stage-head"><span>Model indiriliyor (sadece ilk sefer)</span><span class="st">Bekliyor</span></div>
+          <div class="bar"><i></i></div>
+        </div>
+        <div class="stage" id="stAudio">
+          <div class="stage-head"><span>Ses okunuyor</span><span class="st">Bekliyor</span></div>
+          <div class="bar"><i></i></div>
+        </div>
+        <div class="stage" id="stAsr">
+          <div class="stage-head"><span>Yazıya dökülüyor</span><span class="st">Bekliyor</span></div>
+          <div class="bar"><i></i></div>
+        </div>
+        <div id="liveText"></div>
+        <div id="deviceInfo"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Right: translation + sentence timeline ===== -->
+  <section class="col-script">
+    <details id="trPanel" class="panel tr-panel hidden" open>
+      <summary><h2>Türkçeye çevir</h2><svg class="chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none"/></svg></summary>
+      <div class="tr-body">
+        <div class="grid2">
+          <label class="field">Kaynak dil
+            <select id="trSrc">
+              <option value="">Seç…</option>
+              <option value="en">İngilizce</option>
+              <option value="es">İspanyolca</option>
+              <option value="de">Almanca</option>
+              <option value="fr">Fransızca</option>
+              <option value="ru">Rusça</option>
+              <option value="ar">Arapça</option>
+              <option value="ja">Japonca</option>
+              <option value="ko">Korece</option>
+              <option value="pt">Portekizce</option>
+              <option value="it">İtalyanca</option>
+            </select>
+          </label>
+          <label class="field">Çeviri motoru
+            <select id="trEngine">
+              <option value="auto">Otomatik</option>
+              <option value="chrome">Chrome yerleşik (internetsiz)</option>
+              <option value="mymemory">MyMemory (internet)</option>
+            </select>
+          </label>
+        </div>
+        <div id="mmBox" class="grid2" style="align-items:end">
+          <label class="field">Kendi e-postan (isteğe bağlı, günlük sınırı artırır)
+            <input id="mmEmail" type="email" inputmode="email" autocomplete="email" placeholder="ornek@mail.com">
+          </label>
+          <label class="check"><input id="mmRemember" type="checkbox"> Bu cihazda hatırla</label>
+        </div>
+        <div class="hint" id="trHint"></div>
+        <div class="actions" style="margin-top:0">
+          <button id="trBtn" class="btn primary">Boş olanları çevir</button>
+          <button id="trAllBtn" class="btn">Hepsini yeniden çevir</button>
+          <button id="trCancelBtn" class="btn stop hidden">Çeviriyi durdur</button>
+        </div>
+        <div class="stage hidden" id="stTr">
+          <div class="stage-head"><span id="stTrLabel">Çeviriliyor</span><span class="st">Bekliyor</span></div>
+          <div class="bar"><i></i></div>
+        </div>
+        <div id="trAlerts" class="alerts"></div>
+      </div>
+    </details>
+
+    <div id="scriptPanel" class="panel">
+      <div class="script-head"><h2>Cümleler</h2><span id="segCount">0</span></div>
+      <div class="export-bar">
+        <div class="seg-ctl" role="radiogroup" aria-label="Kopyalanacak ve indirilecek metin">
+          <label><input type="radio" name="exportMode" value="orig" checked><span>Orijinal</span></label>
+          <label><input type="radio" name="exportMode" value="tr"><span>Türkçe</span></label>
+          <label><input type="radio" name="exportMode" value="both"><span>İkisi</span></label>
+        </div>
+        <div class="btns">
+          <button id="copyAllBtn" class="btn sm" disabled>Tümünü kopyala</button>
+          <button id="txtBtn" class="btn sm" disabled>.txt indir</button>
+          <button id="srtBtn" class="btn sm" disabled>.srt indir</button>
+        </div>
+      </div>
+    </div>
+    <div id="segList">
+      <div class="empty"><b>Henüz cümle yok</b>Video seç ve "Yazıya dök"e bas; cümleler zamanlarıyla burada sıralanır.</div>
+    </div>
+  </section>
+</main>
+<p class="foot">DubYaz v1.2. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
+
+<div id="toast" role="status"></div>
+
+<!-- ===== Web Worker source (runs Whisper off the main thread) ===== -->
+<script type="text/plain" id="workerSrc">
+// Transformers.js worker: loads Whisper and transcribes 16 kHz mono audio.
+const TF_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6';
+let tf = null;          // library module
+let asr = null;         // pipeline instance
+let loadedKey = null;   // "<modelId>|<device>"
+let device = null;      // 'webgpu' | 'wasm'
+
+const post = (msg) => self.postMessage(msg);
+
+function classify(err) {
+  const m = String((err && (err.message || err)) || '');
+  if (/out of memory|allocation failed|bad_alloc|Aborted\(|RangeError|memory access out of bounds|OOM/i.test(m)) return 'oom';
+  if (/failed to fetch|networkerror|network error|load failed|ERR_INTERNET|ERR_NAME|fetch/i.test(m) || (self.navigator && self.navigator.onLine === false)) return 'network';
+  return 'other';
+}
+
+async function loadLib() {
+  if (tf) return tf;
+  try {
+    tf = await import(TF_URL);
+  } catch (e) {
+    const err = new Error('Library import failed: ' + (e && e.message));
+    err.kind = 'network';
+    throw err;
+  }
+  tf.env.allowLocalModels = false;
+  tf.env.useBrowserCache = true;
+  return tf;
+}
+
+async function webgpuAvailable() {
+  try {
+    if (!self.navigator || !self.navigator.gpu) return false;
+    const adapter = await self.navigator.gpu.requestAdapter();
+    return !!adapter;
+  } catch (e) { return false; }
+}
+
+function attemptsFor(size, dev) {
+  if (dev === 'webgpu') {
+    return [
+      { id: 'onnx-community/whisper-' + size, dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' } },
+      { id: 'Xenova/whisper-' + size, dtype: 'fp32' },
+    ];
+  }
+  return [
+    { id: 'onnx-community/whisper-' + size, dtype: 'q8' },
+    { id: 'Xenova/whisper-' + size, dtype: 'q8' },
+  ];
+}
+
+async function disposeCurrent() {
+  if (asr) { try { await asr.dispose(); } catch (e) {} }
+  asr = null; loadedKey = null; device = null;
+}
+
+async function loadOnDevice(size, dev) {
+  let lastErr = null;
+  for (const a of attemptsFor(size, dev)) {
+    const key = a.id + '|' + dev;
+    if (asr && loadedKey === key) return;
+    await disposeCurrent();
+    post({ type: 'model-attempt', model: a.id, device: dev });
+    try {
+      asr = await tf.pipeline('automatic-speech-recognition', a.id, {
+        device: dev,
+        dtype: a.dtype,
+        progress_callback: (p) => {
+          if (p && p.status === 'progress') post({ type: 'model-progress', file: p.file, loaded: p.loaded || 0, total: p.total || 0 });
+        },
+      });
+      loadedKey = key; device = dev;
+      return;
+    } catch (e) {
+      lastErr = e;
+      const kind = classify(e);
+      if (kind === 'network' || kind === 'oom') { e.kind = kind; throw e; }
+      // otherwise try the next candidate
+    }
+  }
+  throw lastErr || new Error('Model could not be loaded');
+}
+
+async function loadModel(size) {
+  await loadLib();
+  const gpu = await webgpuAvailable();
+  if (gpu) {
+    try {
+      await loadOnDevice(size, 'webgpu');
+      post({ type: 'model-ready', device: 'webgpu', model: loadedKey.split('|')[0] });
+      return;
+    } catch (e) {
+      if (e.kind === 'network') throw e;
+      post({ type: 'webgpu-fallback', reason: String(e && e.message || e) });
+    }
+  }
+  await loadOnDevice(size, 'wasm');
+  post({ type: 'model-ready', device: 'wasm', model: loadedKey.split('|')[0], gpuAvailable: gpu });
+}
+
+// Mirrors the pipeline's chunking loop to know how many windows will be generated.
+function countChunks(len, sr) {
+  const win = sr * 30, stride = sr * 5, jump = win - 2 * stride;
+  let n = 1, off = 0;
+  while (off + win < len) { off += jump; n++; }
+  return n;
+}
+
+async function runAsr(audio, language) {
+  const total = countChunks(audio.length, 16000);
+  let done = 0;
+  post({ type: 'asr-progress', done, total });
+  const opts = { return_timestamps: true, chunk_length_s: 30, stride_length_s: 5, task: 'transcribe' };
+  if (language && language !== 'auto') opts.language = language;
+  opts.streamer = new tf.WhisperTextStreamer(asr.tokenizer, {
+    skip_prompt: true,
+    callback_function: (t) => post({ type: 'live', text: t }),
+    on_finalize: () => { done = Math.min(done + 1, total); post({ type: 'asr-progress', done, total }); },
+  });
+  return await asr(audio, opts);
+}
+
+async function transcribe(audio, language, size) {
+  try {
+    const out = await runAsr(audio, language);
+    post({ type: 'result', text: out.text, chunks: out.chunks || [], device });
+  } catch (e) {
+    const kind = classify(e);
+    if (device === 'webgpu' && kind !== 'oom' && kind !== 'network') {
+      // WebGPU failed during inference: fall back to WASM and retry once.
+      post({ type: 'webgpu-fallback', reason: String(e && e.message || e), duringRun: true });
+      await disposeCurrent();
+      await loadOnDevice(size, 'wasm');
+      post({ type: 'model-ready', device: 'wasm', model: loadedKey.split('|')[0] });
+      const out = await runAsr(audio, language);
+      post({ type: 'result', text: out.text, chunks: out.chunks || [], device });
+      return;
+    }
+    e.kind = kind;
+    throw e;
+  }
+}
+
+self.onmessage = async (ev) => {
+  const msg = ev.data;
+  try {
+    if (msg.type === 'load') {
+      await loadModel(msg.size);
+    } else if (msg.type === 'transcribe') {
+      await transcribe(msg.audio, msg.language, msg.size);
+    }
+  } catch (e) {
+    post({ type: 'error', stage: msg.type, kind: e.kind || classify(e), message: String(e && e.message || e) });
+  }
+};
+</script>
+
+<script>
+'use strict';
+/* =====================================================================
+   DubYaz v1.2 — Step 1 + Step 2 (new UI): upload, in-browser transcription, sentence cards,
+   copy/export. Later steps (translation, voice, burned-in export) plug
+   into the same `state` object and the module objects below.
+   ===================================================================== */
+
+/* ---------- Global state (single source of truth) ---------- */
+const state = {
+  file: null,
+  videoUrl: null,
+  duration: 0,
+  language: 'auto',
+  model: 'tiny',
+  device: null,
+  busy: false,         // transcription running
+  translating: false,  // translation running
+  // Segment shape: {id, start, end, text, translation: "", speaker: null}
+  segments: [],
+};
+
+const MAX_RECOMMENDED_SEC = 5 * 60;
+const $ = (id) => document.getElementById(id);
+
+/* ---------- Small utilities ---------- */
+const Util = {
+  fmtTime(sec) { // mm:ss.s
+    sec = Math.max(0, sec || 0);
+    const m = Math.floor(sec / 60);
+    const s = sec - m * 60;
+    return String(m).padStart(2, '0') + ':' + s.toFixed(1).padStart(4, '0');
+  },
+  fmtSrt(sec) { // HH:MM:SS,mmm
+    let ms = Math.max(0, Math.round((sec || 0) * 1000));
+    const h = Math.floor(ms / 3600000); ms -= h * 3600000;
+    const m = Math.floor(ms / 60000); ms -= m * 60000;
+    const s = Math.floor(ms / 1000); ms -= s * 1000;
+    const p = (n, l) => String(n).padStart(l, '0');
+    return p(h, 2) + ':' + p(m, 2) + ':' + p(s, 2) + ',' + p(ms, 3);
+  },
+  fmtBytes(b) {
+    if (!b) return '0 MB';
+    return (b / 1048576).toFixed(b > 104857600 ? 0 : 1) + ' MB';
+  },
+  baseName(name) { return (name || 'dubyaz').replace(/\.[^.]+$/, '') || 'dubyaz'; },
+  sleep(ms) { return new Promise((r) => setTimeout(r, ms)); },
+  // Decode HTML entities (e.g. &#39;) returned by some translation services. Textarea never executes markup.
+  decodeEntities(s) { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; },
+  store: {
+    get(k) { try { return localStorage.getItem('dubyaz.' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('dubyaz.' + k, v); } catch (e) {} },
+    remove(k) { try { localStorage.removeItem('dubyaz.' + k); } catch (e) {} },
+  },
+};
+
+/* ---------- UI helpers: toast, alerts, stages ---------- */
+const UI = {
+  toastTimer: null,
+  toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  },
+  alert(kind, msg, target) {
+    const d = document.createElement('div');
+    d.className = 'alert ' + kind;
+    d.textContent = msg;
+    $(target || 'alerts').appendChild(d);
+    return d;
+  },
+  clearAlerts(target) { $(target || 'alerts').innerHTML = ''; },
+  stage(id, { status, pct = null, indet = false, done = false, fail = false } = {}) {
+    const el = $(id);
+    el.classList.remove('hidden');
+    const bar = el.querySelector('.bar');
+    const fill = bar.querySelector('i');
+    if (status !== undefined) el.querySelector('.st').textContent = status;
+    el.classList.toggle('done', done);
+    el.classList.toggle('fail', fail);
+    bar.classList.toggle('indet', indet && !done && !fail);
+    if (!indet) fill.style.width = (done ? 100 : Math.max(0, Math.min(100, pct || 0))) + '%';
+    else fill.style.width = '';
+  },
+  resetStages() {
+    ['stModel', 'stAudio', 'stAsr'].forEach((id) => this.stage(id, { status: 'Bekliyor', pct: 0 }));
+    $('liveText').textContent = '';
+    $('deviceInfo').textContent = '';
+  },
+  setBusy(b) {
+    state.busy = b;
+    $('startBtn').classList.toggle('hidden', b);
+    $('cancelBtn').classList.toggle('hidden', !b);
+    $('langSelect').disabled = b;
+    $('modelSelect').disabled = b;
+    $('startBtn').disabled = !state.file || state.translating;
+    Translation.updateButtons();
+  },
+};
+
+/* ---------- Error messages (Turkish) ---------- */
+const Errors = {
+  message(kind, raw) {
+    switch (kind) {
+      case 'unsupported': return 'Bu dosya bir video gibi görünmüyor. Lütfen bir video dosyası seç (mp4, webm, mov...).';
+      case 'noaudio': return 'Videoda ses izi bulunamadı ya da ses tamamen sessiz. Yazıya dökülecek konuşma yok.';
+      case 'decode': return 'Videonun sesi okunamadı: videoda ses izi yok ya da ses biçimi bu tarayıcıda desteklenmiyor. Sesli bir video olduğundan eminsen mp4 (AAC ses) olarak dönüştürüp tekrar dene.';
+      case 'network': return 'Model indirilemedi. İnternet bağlantını kontrol et. (Model bir kez indirildikten sonra önbellekten çalışır.)';
+      case 'oom': return 'Bellek yetersiz kaldı. Daha kısa bir video dene, "Hızlı (whisper-tiny)" modelini seç veya diğer sekmeleri kapat.';
+      case 'worker': return 'Arka plan işçisi başlatılamadı. Tarayıcın güncel değil olabilir; Chrome\'u güncelleyip tekrar dene.';
+      default: return 'Beklenmeyen bir hata oluştu: ' + (raw || 'bilinmiyor');
+    }
+  },
+};
+
+/* ---------- Video input module ---------- */
+const VideoInput = {
+  init() {
+    const dz = $('dropZone'), fi = $('fileInput');
+    dz.addEventListener('click', () => { if (!state.busy) fi.click(); });
+    dz.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !state.busy) { e.preventDefault(); fi.click(); } });
+    fi.addEventListener('change', () => { if (fi.files && fi.files[0]) this.load(fi.files[0]); fi.value = ''; });
+    ['dragenter', 'dragover'].forEach((t) => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach((t) => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.remove('drag'); }));
+    dz.addEventListener('drop', (e) => {
+      if (state.busy) return;
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) this.load(f);
+    });
+    // Prevent the browser from opening files dropped outside the zone.
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+
+    const v = $('video');
+    v.addEventListener('loadedmetadata', () => {
+      state.duration = isFinite(v.duration) ? v.duration : 0;
+      this.showInfo();
+    });
+    v.addEventListener('error', () => {
+      UI.alert('warn', 'Tarayıcı bu videoyu önizlemede oynatamıyor. Sesi yine de okumayı deneyebilirsin; ancak cümle oynatma çalışmayabilir.');
+    });
+  },
+  isVideo(file) {
+    if (file.type && file.type.startsWith('video/')) return true;
+    return /\.(mp4|m4v|webm|mov|mkv|avi|3gp|ogv|mpeg|mpg)$/i.test(file.name || '');
+  },
+  load(file) {
+    if (state.busy || state.translating) { UI.toast('Önce devam eden işlemi bitir veya durdur'); return; }
+    UI.clearAlerts();
+    if (!this.isVideo(file)) { UI.alert('err', Errors.message('unsupported')); return; }
+    if (state.segments.length && !confirm('Yeni video seçilirse mevcut cümleler silinecek. Devam edilsin mi?')) return;
+    if (state.videoUrl) URL.revokeObjectURL(state.videoUrl);
+    state.file = file;
+    state.duration = 0;
+    state.videoUrl = URL.createObjectURL(file);
+    Segments.set([]);
+    const v = $('video');
+    v.src = state.videoUrl;
+    $('videoStage').classList.remove('hidden');
+    $('dropZone').classList.add('compact');
+    $('dropZone').querySelector('.btn').textContent = 'Değiştir';
+    this.showInfo();
+    $('startBtn').disabled = false;
+    $('progressCard').classList.add('hidden');
+    Stepper.update();
+  },
+  showInfo() {
+    if (!state.file) return;
+    const el = $('fileInfo');
+    el.classList.remove('hidden');
+    el.innerHTML = '<b></b><small></small>';
+    el.querySelector('b').textContent = state.file.name;
+    el.querySelector('small').textContent = Util.fmtBytes(state.file.size) + (state.duration ? ', ' + Util.fmtTime(state.duration) : '');
+  },
+};
+
+/* ---------- Audio extraction (main thread: Web Audio is not available in workers) ---------- */
+const AudioExtractor = {
+  reader: null,
+  cancelled: false,
+  cancel() {
+    this.cancelled = true;
+    if (this.reader) { try { this.reader.abort(); } catch (e) {} }
+  },
+  readFile(file, onProgress) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      this.reader = r;
+      r.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(Object.assign(new Error('read failed'), { kind: r.error && r.error.name === 'NotReadableError' ? 'other' : 'oom' }));
+      r.onabort = () => reject(Object.assign(new Error('cancelled'), { kind: 'cancelled' }));
+      r.readAsArrayBuffer(file);
+    });
+  },
+  async extract(file, onStage) {
+    this.cancelled = false;
+    onStage({ status: 'Dosya okunuyor 0%', pct: 0 });
+    let buf;
+    try {
+      buf = await this.readFile(file, (f) => onStage({ status: 'Dosya okunuyor ' + Math.round(f * 100) + '%', pct: f * 40 }));
+    } catch (e) {
+      if (e.kind === 'cancelled') throw e;
+      throw Object.assign(new Error(e.message), { kind: 'oom' });
+    }
+    if (this.cancelled) throw Object.assign(new Error('cancelled'), { kind: 'cancelled' });
+
+    onStage({ status: 'Ses çözülüyor…', indet: true });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC || !window.OfflineAudioContext) throw Object.assign(new Error('no WebAudio'), { kind: 'decode' });
+    const ctx = new AC();
+    let decoded;
+    try {
+      decoded = await new Promise((res, rej) => {
+        // Callback form is used for compatibility with older implementations.
+        const p = ctx.decodeAudioData(buf, res, rej);
+        if (p && p.catch) p.catch(rej);
+      });
+    } catch (e) {
+      const msg = String(e && e.message || e);
+      throw Object.assign(new Error(msg), { kind: /memory|allocation|RangeError/i.test(msg) ? 'oom' : 'decode' });
+    } finally {
+      buf = null;
+      try { ctx.close(); } catch (e) {}
+    }
+    if (this.cancelled) throw Object.assign(new Error('cancelled'), { kind: 'cancelled' });
+    if (!decoded || !decoded.length || decoded.numberOfChannels < 1) throw Object.assign(new Error('empty'), { kind: 'noaudio' });
+
+    onStage({ status: '16 kHz mono\'ya dönüştürülüyor…', indet: true });
+    const targetRate = 16000;
+    const outLen = Math.ceil(decoded.duration * targetRate);
+    let rendered;
+    try {
+      // 1-channel destination down-mixes all input channels (speaker rules), then resamples to 16 kHz.
+      const off = new OfflineAudioContext(1, outLen, targetRate);
+      const src = off.createBufferSource();
+      src.buffer = decoded;
+      src.connect(off.destination);
+      src.start(0);
+      rendered = await off.startRendering();
+    } catch (e) {
+      const msg = String(e && e.message || e);
+      throw Object.assign(new Error(msg), { kind: /memory|allocation|RangeError/i.test(msg) ? 'oom' : 'decode' });
+    }
+    // Copy into an owned buffer so it can be transferred to the worker safely.
+    const audio = new Float32Array(rendered.getChannelData(0));
+    // Silence check: detect videos without a real audio track.
+    let peak = 0;
+    for (let i = 0; i < audio.length; i += 64) { const a = Math.abs(audio[i]); if (a > peak) peak = a; }
+    if (peak < 1e-4) throw Object.assign(new Error('silent'), { kind: 'noaudio' });
+    return { audio, duration: decoded.duration };
+  },
+};
+
+/* ---------- Transcriber (Web Worker wrapper) ---------- */
+const Transcriber = {
+  worker: null,
+  workerModel: null, // size loaded in current worker
+  handlers: null,
+  createWorker() {
+    const src = $('workerSrc').textContent;
+    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+    const w = new Worker(url, { type: 'module' });
+    w.onmessage = (e) => this.handlers && this.handlers(e.data);
+    w.onerror = (e) => {
+      if (e && e.preventDefault) e.preventDefault();
+      this.handlers && this.handlers({ type: 'error', kind: /memory/i.test(e && e.message || '') ? 'oom' : 'worker', message: e && e.message });
+    };
+    return w;
+  },
+  ensureWorker(size) {
+    if (this.worker && this.workerModel !== size) this.terminate();
+    if (!this.worker) { this.worker = this.createWorker(); this.workerModel = size; }
+    return this.worker;
+  },
+  terminate() {
+    if (this.worker) { this.worker.terminate(); this.worker = null; this.workerModel = null; }
+  },
+};
+
+/* ---------- Orchestration of a transcription job ---------- */
+const Job = {
+  runId: 0,
+  async start() {
+    if (!state.file || state.busy || state.translating) return;
+    if (state.segments.length && !confirm('Mevcut cümleler yenileriyle değiştirilecek. Devam edilsin mi?')) return;
+    UI.clearAlerts();
+    if (state.duration > MAX_RECOMMENDED_SEC) {
+      if (!confirm('Video ' + Util.fmtTime(state.duration) + ' uzunluğunda. 5 dakikadan uzun videolar çok bellek kullanır ve yavaş işlenir (özellikle telefonda). Yine de devam edilsin mi?')) return;
+      UI.alert('warn', 'Uzun video: işlem uzun sürebilir ve bellek yetmeyebilir.');
+    }
+    const runId = ++this.runId;
+    const size = state.model;
+    const language = state.language;
+    UI.setBusy(true);
+    UI.resetStages();
+    $('progressCard').classList.remove('hidden');
+
+    let worker;
+    try { worker = Transcriber.ensureWorker(size); }
+    catch (e) { this.fail('worker', e.message); return; }
+
+    // --- Model loading runs in the worker while audio is decoded on the main thread ---
+    const files = new Map();
+    let modelReady = false, modelError = null, gotProgress = false;
+    let resolveModel;
+    const modelPromise = new Promise((r) => { resolveModel = r; });
+    let resolveResult, rejectResult;
+    const resultPromise = new Promise((res, rej) => { resolveResult = res; rejectResult = rej; });
+
+    UI.stage('stModel', { status: 'Hazırlanıyor…', indet: true });
+    Transcriber.handlers = (m) => {
+      if (runId !== this.runId) return;
+      switch (m.type) {
+        case 'model-attempt':
+          files.clear();
+          $('deviceInfo').textContent = 'Model: ' + m.model + ' · ' + (m.device === 'webgpu' ? 'WebGPU' : 'WASM (CPU)');
+          break;
+        case 'model-progress': {
+          gotProgress = true;
+          files.set(m.file, { loaded: m.loaded, total: m.total });
+          let l = 0, t = 0;
+          files.forEach((f) => { l += f.loaded; t += f.total; });
+          const pct = t ? (l / t) * 100 : 0;
+          UI.stage('stModel', { status: Math.round(pct) + '% · ' + Util.fmtBytes(l) + ' / ' + Util.fmtBytes(t), pct });
+          break;
+        }
+        case 'webgpu-fallback':
+          UI.alert('info', m.duringRun
+            ? 'WebGPU yazıya dökme sırasında hata verdi; otomatik olarak WASM (CPU) moduna geçildi. Daha yavaş olabilir.'
+            : 'WebGPU bu cihazda çalışmadı; otomatik olarak WASM (CPU) moduna geçildi. Daha yavaş olabilir.');
+          break;
+        case 'model-ready':
+          state.device = m.device;
+          modelReady = true;
+          $('deviceInfo').textContent = 'Model: ' + m.model + ' · ' + (m.device === 'webgpu' ? 'WebGPU (ekran kartı)' : 'WASM (CPU)');
+          UI.stage('stModel', { status: gotProgress ? 'Tamam' : 'Önbellekten yüklendi', done: true });
+          resolveModel();
+          break;
+        case 'asr-progress': {
+          const pct = m.total ? (m.done / m.total) * 100 : 0;
+          UI.stage('stAsr', { status: Math.round(pct) + '% (' + m.done + '/' + m.total + ' parça)', pct });
+          break;
+        }
+        case 'live': {
+          const lt = $('liveText');
+          lt.textContent = (lt.textContent + m.text).slice(-300);
+          break;
+        }
+        case 'result':
+          resolveResult(m);
+          break;
+        case 'error':
+          if (!modelReady) { modelError = m; resolveModel(); }
+          rejectResult(m);
+          break;
+      }
+    };
+    resultPromise.catch(() => {}); // handled below
+    worker.postMessage({ type: 'load', size });
+
+    // --- Audio extraction ---
+    let audioData;
+    try {
+      audioData = await AudioExtractor.extract(state.file, (o) => UI.stage('stAudio', o));
+      if (runId !== this.runId) return;
+      UI.stage('stAudio', { status: 'Tamam · ' + Util.fmtTime(audioData.duration), done: true });
+      if (!state.duration) state.duration = audioData.duration;
+    } catch (e) {
+      if (runId !== this.runId || e.kind === 'cancelled') return;
+      UI.stage('stAudio', { status: 'Hata', fail: true });
+      Transcriber.terminate(); // stop model download too
+      this.fail(e.kind || 'decode', e.message);
+      return;
+    }
+
+    // --- Wait for the model ---
+    await modelPromise;
+    if (runId !== this.runId) return;
+    if (modelError) {
+      UI.stage('stModel', { status: 'Hata', fail: true });
+      Transcriber.terminate();
+      this.fail(modelError.kind, modelError.message);
+      return;
+    }
+
+    // --- Transcribe ---
+    UI.stage('stAsr', { status: 'Başlıyor…', pct: 0 });
+    $('liveText').textContent = '';
+    const audio = audioData.audio;
+    worker.postMessage({ type: 'transcribe', audio, language: language === 'auto' ? null : language, size }, [audio.buffer]);
+    try {
+      const res = await resultPromise;
+      if (runId !== this.runId) return;
+      UI.stage('stAsr', { status: 'Tamam', done: true });
+      const segs = Segments.fromChunks(res.chunks, audioData.duration);
+      Segments.set(segs);
+      Translation.onNewSegments(language);
+      $('liveText').textContent = '';
+      if (!segs.length) UI.alert('warn', 'Yazıya dökme bitti ama hiç konuşma bulunamadı. Dili elle seçip veya "Daha iyi" modeli deneyebilirsin.');
+      else UI.toast(segs.length + ' cümle hazır');
+      UI.setBusy(false);
+    } catch (m) {
+      if (runId !== this.runId) return;
+      UI.stage('stAsr', { status: 'Hata', fail: true });
+      Transcriber.terminate();
+      this.fail(m.kind, m.message);
+    }
+  },
+  cancel() {
+    if (!state.busy) return;
+    this.runId++;
+    AudioExtractor.cancel();
+    Transcriber.terminate();
+    ['stModel', 'stAudio', 'stAsr'].forEach((id) => {
+      const el = $(id);
+      if (!el.classList.contains('done')) UI.stage(id, { status: 'İptal edildi', pct: 0 });
+    });
+    UI.setBusy(false);
+    UI.toast('İşlem iptal edildi');
+  },
+  fail(kind, raw) {
+    UI.alert('err', Errors.message(kind, raw));
+    UI.setBusy(false);
+  },
+};
+
+/* ---------- Segments: model + cards ---------- */
+const Segments = {
+  fromChunks(chunks, duration) {
+    const out = [];
+    (chunks || []).forEach((c) => {
+      const text = String(c.text || '').trim();
+      if (!text) return;
+      let start = Array.isArray(c.timestamp) && c.timestamp[0] != null ? c.timestamp[0] : 0;
+      let end = Array.isArray(c.timestamp) && c.timestamp[1] != null ? c.timestamp[1] : duration;
+      if (duration) { start = Math.min(start, duration); end = Math.min(end, duration); }
+      if (end <= start) end = start + 0.5;
+      out.push({ id: out.length + 1, start, end, text, translation: '', speaker: null });
+    });
+    return out;
+  },
+  set(list) {
+    Player.stop();
+    state.segments = list;
+    this.render();
+  },
+  get(id) { return state.segments.find((s) => s.id === id); },
+  autosize(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; },
+  card(id) { return document.querySelector('.seg[data-id="' + id + '"]'); },
+  // Update one card's translation box without re-rendering (keeps focus/scroll).
+  showTranslation(id) {
+    const s = this.get(id), c = this.card(id);
+    if (!s || !c) return;
+    const tt = c.querySelector('textarea.tr');
+    tt.value = s.translation || '';
+    this.autosize(tt);
+    Stepper.update();
+    Sync.refresh();
+  },
+  markTranslating(id, on) { const c = this.card(id); if (c) c.classList.toggle('translating', on); },
+  render() {
+    const box = $('segList');
+    box.innerHTML = '';
+    const has = state.segments.length > 0;
+    $('segCount').textContent = has ? state.segments.length + ' cümle' : '';
+    ['copyAllBtn', 'txtBtn', 'srtBtn'].forEach((id) => { $(id).disabled = !has; });
+    $('trPanel').classList.toggle('hidden', !has);
+    Translation.updateButtons();
+    Stepper.update();
+    Sync.reset();
+    if (!has) {
+      box.innerHTML = '<div class="empty"><b>Henüz cümle yok</b>Video seç ve "Yazıya dök"e bas; cümleler zamanlarıyla burada sıralanır.</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    state.segments.forEach((s) => {
+      const card = document.createElement('article');
+      card.className = 'seg';
+      card.dataset.id = s.id;
+      card.innerHTML =
+        '<div class="seg-rail">' +
+          '<span class="t1"></span><span class="t2"></span>' +
+          '<button class="play" data-act="play" aria-label="Bu cümleyi oynat">' + ICON.play + '</button>' +
+        '</div>' +
+        '<div class="seg-body">' +
+          '<div class="line orig"><span class="tag">Orj</span>' +
+            '<textarea rows="1" class="orig" aria-label="Orijinal cümle"></textarea>' +
+            '<button class="btn icon-btn" data-act="copy" aria-label="Orijinal cümleyi kopyala" title="Kopyala">' + ICON.copy + '</button>' +
+          '</div>' +
+          '<div class="line tr"><span class="tag">TR</span>' +
+            '<textarea rows="1" class="tr" aria-label="Türkçe çeviri" placeholder="Çeviri burada görünür; elle de yazabilirsin"></textarea>' +
+            '<button class="btn icon-btn" data-act="tr" aria-label="Bu cümleyi çevir" title="Çevir">' + ICON.globe + '</button>' +
+            '<button class="btn icon-btn" data-act="copytr" aria-label="Çeviriyi kopyala" title="Kopyala">' + ICON.copy + '</button>' +
+          '</div>' +
+        '</div>';
+      card.querySelector('.t1').textContent = Util.fmtTime(s.start);
+      card.querySelector('.t2').textContent = Util.fmtTime(s.end);
+      const ta = card.querySelector('textarea.orig');
+      ta.value = s.text;
+      ta.addEventListener('input', () => { s.text = ta.value; this.autosize(ta); Sync.refresh(); });
+      const tt = card.querySelector('textarea.tr');
+      tt.value = s.translation || '';
+      tt.addEventListener('input', () => { s.translation = tt.value; this.autosize(tt); Translation.refreshHint(); Stepper.update(); Sync.refresh(); });
+      card.querySelector('[data-act="play"]').addEventListener('click', () => {
+        if (Player.activeId === s.id) { $('video').pause(); Player.stop(); } else Player.playSegment(s.id);
+      });
+      card.querySelector('[data-act="copy"]').addEventListener('click', () => Clip.copy(s.text.trim(), 'Cümle kopyalandı'));
+      card.querySelector('[data-act="copytr"]').addEventListener('click', () => Clip.copy((s.translation || '').trim(), 'Çeviri kopyalandı'));
+      card.querySelector('[data-act="tr"]').addEventListener('click', () => Translation.run([s.id]));
+      frag.appendChild(card);
+    });
+    box.appendChild(frag);
+    box.querySelectorAll('textarea').forEach((ta) => this.autosize(ta));
+  },
+};
+
+/* ---------- Inline icons ---------- */
+const ICON = {
+  play: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>',
+  copy: '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>',
+  globe: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 10h15M10 2.5c2.2 2.3 2.2 12.7 0 15M10 2.5c-2.2 2.3-2.2 12.7 0 15" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+};
+
+/* ---------- Live sync: subtitle overlay on the video + highlight of the current card ---------- */
+const Sync = {
+  currentId: null,
+  raf: null,
+  init() {
+    const v = $('video');
+    const tick = () => { this.update(); if (!v.paused && !v.ended) this.raf = requestAnimationFrame(tick); };
+    v.addEventListener('play', () => { cancelAnimationFrame(this.raf); this.raf = requestAnimationFrame(tick); });
+    ['pause', 'seeked', 'timeupdate', 'ended'].forEach((ev) => v.addEventListener(ev, () => this.update()));
+    document.querySelectorAll('input[name="subMode"]').forEach((r) => r.addEventListener('change', () => {
+      Util.store.set('subMode', this.mode()); this.refresh();
+    }));
+    const saved = Util.store.get('subMode');
+    const el = saved && document.querySelector('input[name="subMode"][value="' + saved + '"]');
+    if (el) el.checked = true;
+  },
+  mode() { const r = document.querySelector('input[name="subMode"]:checked'); return r ? r.value : 'tr'; },
+  find(t) {
+    // Segments are time-ordered; the list is small enough for a linear scan.
+    for (const s of state.segments) { if (t >= s.start && t < s.end) return s; }
+    return null;
+  },
+  reset() { this.currentId = null; this.refresh(); },
+  refresh() { this.currentId = undefined; this.update(); },
+  update() {
+    const v = $('video');
+    const s = state.segments.length ? this.find(v.currentTime || 0) : null;
+    const id = s ? s.id : null;
+    // Overlay text (always refreshed so edits show immediately).
+    const ov = $('subOverlay'), mode = this.mode();
+    let text = '';
+    if (s && mode === 'orig') text = s.text.trim();
+    if (s && mode === 'tr') text = (s.translation || '').trim() || s.text.trim();
+    ov.classList.toggle('tr', !!s && mode === 'tr' && !!(s.translation || '').trim());
+    if (ov.textContent !== text) ov.textContent = text;
+    if (id === this.currentId) return;
+    if (this.currentId != null) { const old = Segments.card(this.currentId); if (old) old.classList.remove('live'); }
+    this.currentId = id;
+    if (id == null) return;
+    const card = Segments.card(id);
+    if (!card) return;
+    card.classList.add('live');
+    // Follow playback, but never steal the view while the user is editing.
+    const editing = document.activeElement && document.activeElement.tagName === 'TEXTAREA';
+    if (!v.paused && !editing) {
+      const r = card.getBoundingClientRect();
+      if (r.top < 90 || r.bottom > window.innerHeight - 20) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  },
+};
+
+/* ---------- Stepper (header): reflects real progress, click scrolls to the section ---------- */
+const Stepper = {
+  init() {
+    document.querySelectorAll('.step').forEach((b) => b.addEventListener('click', () => {
+      const t = $(b.dataset.target);
+      if (t && !t.classList.contains('hidden')) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else if (b.dataset.step !== '1') UI.toast('Önce önceki adımı tamamla');
+    }));
+  },
+  update() {
+    const hasFile = !!state.file, hasSegs = state.segments.length > 0;
+    const translated = hasSegs && state.segments.every((s) => !s.text.trim() || (s.translation || '').trim());
+    const doneMap = { 1: hasFile, 2: hasSegs, 3: translated, 4: false };
+    const active = !hasFile ? 1 : !hasSegs ? 2 : !translated ? 3 : 4;
+    document.querySelectorAll('.step').forEach((b) => {
+      const n = Number(b.dataset.step);
+      b.classList.toggle('done', !!doneMap[n] && n !== active);
+      b.classList.toggle('active', n === active);
+      b.setAttribute('aria-current', n === active ? 'step' : 'false');
+    });
+  },
+};
+
+/* ---------- Segment playback in the preview player ---------- */
+const Player = {
+  endAt: null, raf: null, activeId: null,
+  init() {
+    const v = $('video');
+    // Manual user interaction cancels range playback.
+    v.addEventListener('pause', () => { if (this.endAt !== null && v.currentTime < this.endAt - 0.05) this.stop(); });
+    v.addEventListener('seeking', () => { if (this.endAt !== null && !this.seekingByUs) this.stop(); });
+    v.addEventListener('seeked', () => { this.seekingByUs = false; });
+  },
+  async playSegment(id) {
+    const s = Segments.get(id);
+    const v = $('video');
+    if (!s || !v.src) return;
+    this.stop();
+    this.activeId = id;
+    this.mark(true);
+    this.seekingByUs = true;
+    v.currentTime = s.start;
+    this.endAt = s.end;
+    try { await v.play(); }
+    catch (e) { this.stop(); UI.toast('Video oynatılamadı'); return; }
+    const tick = () => {
+      if (this.endAt === null) return;
+      if (v.currentTime >= this.endAt || v.ended) { v.pause(); this.stop(); return; }
+      this.raf = requestAnimationFrame(tick);
+    };
+    this.raf = requestAnimationFrame(tick);
+    if (window.matchMedia('(max-width: 959px)').matches) v.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  },
+  mark(on) {
+    if (this.activeId == null) return;
+    const el = document.querySelector('.seg[data-id="' + this.activeId + '"]');
+    if (el) el.classList.toggle('playing', on);
+  },
+  stop() {
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = null;
+    this.endAt = null;
+    this.mark(false);
+    this.activeId = null;
+  },
+};
+
+/* ---------- Clipboard with fallback ---------- */
+const Clip = {
+  async copy(text, okMsg) {
+    if (!text) { UI.toast('Kopyalanacak metin yok'); return; }
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        UI.toast(okMsg || 'Kopyalandı');
+        return;
+      }
+    } catch (e) { /* fall through to legacy method */ }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    UI.toast(ok ? (okMsg || 'Kopyalandı') : 'Kopyalanamadı; metni elle seçip kopyala');
+  },
+};
+
+/* ---------- Export: txt / srt ---------- */
+const Exporter = {
+  mode() { const r = document.querySelector('input[name="exportMode"]:checked'); return r ? r.value : 'orig'; },
+  // Text of one segment according to the export mode ('orig' | 'tr' | 'both').
+  segText(s, mode) {
+    const o = (s.text || '').trim(), t = (s.translation || '').trim();
+    if (mode === 'tr') return t;
+    if (mode === 'both') return [o, t].filter(Boolean).join('\n');
+    return o;
+  },
+  missingTranslations() { return state.segments.filter((s) => s.text.trim() && !(s.translation || '').trim()).length; },
+  warnMissing() {
+    const mode = this.mode();
+    if (mode === 'orig') return true;
+    const miss = this.missingTranslations();
+    if (!miss) return true;
+    return confirm(miss + ' cümlenin çevirisi boş. Bu cümleler ' + (mode === 'tr' ? 'atlanacak' : 'sadece orijinal metinle yazılacak') + '. Devam edilsin mi?');
+  },
+  allText() {
+    const mode = this.mode();
+    return state.segments.map((s) => this.segText(s, mode)).filter(Boolean).join(mode === 'both' ? '\n\n' : '\n');
+  },
+  buildSrt() {
+    const mode = this.mode();
+    const lines = [];
+    let n = 1;
+    state.segments.forEach((s) => {
+      const t = this.segText(s, mode);
+      if (!t) return;
+      lines.push(String(n++), Util.fmtSrt(s.start) + ' --> ' + Util.fmtSrt(s.end), t, '');
+    });
+    return lines.join('\r\n');
+  },
+  fileName(ext) {
+    const suffix = { orig: '', tr: '_tr', both: '_cift' }[this.mode()] || '';
+    return Util.baseName(state.file && state.file.name) + suffix + '.' + ext;
+  },
+  download(content, filename, mime) {
+    // UTF-8 BOM helps some players/editors show Turkish characters correctly.
+    const blob = new Blob(['﻿' + content], { type: mime + ';charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  },
+};
+
+/* =====================================================================
+   STEP 2 — Translation to Turkish.
+   Engines: Chrome built-in Translator API (desktop Chrome 138+, offline after
+   the language pack is downloaded) and MyMemory (free web API, daily limit).
+   Results are stored in state.segments[i].translation.
+   ===================================================================== */
+const TARGET_LANG = 'tr';
+const WHISPER_TO_ISO = {
+  english: 'en', turkish: 'tr', spanish: 'es', german: 'de', french: 'fr', russian: 'ru',
+  arabic: 'ar', japanese: 'ja', korean: 'ko', portuguese: 'pt', italian: 'it',
+};
+
+/* ---------- Engine: Chrome built-in Translator API ---------- */
+const ChromeEngine = {
+  label: 'Chrome yerleşik',
+  translator: null,
+  pair: null,
+  supported() { return typeof self !== 'undefined' && 'Translator' in self; },
+  async availability(src) {
+    if (!this.supported()) return 'unavailable';
+    try {
+      // Guard against implementations that never resolve.
+      return await Promise.race([
+        self.Translator.availability({ sourceLanguage: src, targetLanguage: TARGET_LANG }),
+        Util.sleep(5000).then(() => 'unavailable'),
+      ]);
+    } catch (e) { return 'unavailable'; }
+  },
+  async prepare(src, onProgress, signal) {
+    if (this.translator && this.pair === src) return;
+    this.dispose();
+    let lastActivity = Date.now();
+    let watchdog;
+    const stalled = new Promise((_, rej) => {
+      // Fail if the language pack shows no progress for 60 s, or if the user cancels.
+      watchdog = setInterval(() => {
+        if (Date.now() - lastActivity > 60000) rej(new Error('dil paketi indirmesi ilerlemiyor'));
+      }, 2000);
+      if (signal) signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
+    });
+    try {
+      this.translator = await Promise.race([
+        self.Translator.create({
+          sourceLanguage: src,
+          targetLanguage: TARGET_LANG,
+          signal,
+          monitor(m) { m.addEventListener('downloadprogress', (e) => { lastActivity = Date.now(); onProgress(e.loaded || 0); }); },
+        }),
+        stalled,
+      ]);
+    } finally {
+      clearInterval(watchdog);
+    }
+    this.pair = src;
+  },
+  async translate(text, src, signal) {
+    return await this.translator.translate(text, signal ? { signal } : undefined);
+  },
+  dispose() {
+    if (this.translator) { try { this.translator.destroy(); } catch (e) {} }
+    this.translator = null; this.pair = null;
+  },
+};
+
+/* ---------- Engine: MyMemory (https://mymemory.translated.net) ---------- */
+const MyMemoryEngine = {
+  label: 'MyMemory',
+  ENDPOINT: 'https://api.mymemory.translated.net/get',
+  MAX_BYTES: 480, // API limit is 500 bytes per query (UTF-8)
+  email: '',
+  bytes(s) { return new TextEncoder().encode(s).length; },
+  // Split long text into <= MAX_BYTES pieces: sentences, then words, then characters.
+  split(text) {
+    const max = this.MAX_BYTES;
+    if (this.bytes(text) <= max) return [text];
+    const out = [];
+    let cur = '';
+    const flush = () => { if (cur.trim()) out.push(cur.trim()); cur = ''; };
+    const add = (u) => {
+      if (this.bytes(cur + u) <= max) { cur += u; return; }
+      flush();
+      if (this.bytes(u) <= max) { cur = u; return; }
+      const units = /\s/.test(u.trim()) ? u.split(/(\s+)/) : Array.from(u);
+      units.forEach((x) => {
+        if (this.bytes(cur + x) <= max) { cur += x; return; }
+        flush();
+        if (this.bytes(x) <= max) { cur = x; return; }
+        Array.from(x).forEach((ch) => { if (this.bytes(cur + ch) > max) flush(); cur += ch; });
+      });
+    };
+    (text.match(/[^.!?。！？]+[.!?。！？]*\s*/g) || [text]).forEach(add);
+    flush();
+    return out;
+  },
+  async request(q, src, signal) {
+    const params = new URLSearchParams({ q, langpair: src + '|' + TARGET_LANG });
+    if (this.email) params.set('de', this.email);
+    let res;
+    try { res = await fetch(this.ENDPOINT + '?' + params.toString(), { signal }); }
+    catch (e) {
+      if (e.name === 'AbortError') throw e;
+      throw Object.assign(new Error(e.message), { kind: 'network' });
+    }
+    let data;
+    try { data = await res.json(); }
+    catch (e) { throw Object.assign(new Error('HTTP ' + res.status), { kind: res.status === 429 ? 'quota' : 'service' }); }
+    const status = Number(data.responseStatus);
+    const txt = (data.responseData && data.responseData.translatedText) || '';
+    if (status === 429 || res.status === 429 || /MYMEMORY WARNING|USED ALL AVAILABLE FREE/i.test(txt)) {
+      throw Object.assign(new Error(txt || 'quota'), { kind: 'quota' });
+    }
+    if (status !== 200) throw Object.assign(new Error(data.responseDetails || txt || ('HTTP ' + res.status)), { kind: 'service' });
+    return Util.decodeEntities(txt);
+  },
+  async translate(text, src, signal) {
+    const out = [];
+    for (const piece of this.split(text)) {
+      out.push(await this.request(piece, src, signal));
+      await Util.sleep(150); // be gentle with the free service
+    }
+    return out.join(' ');
+  },
+};
+
+/* ---------- Translation controller (UI + job) ---------- */
+const Translation = {
+  cancelled: false,
+  abortCtrl: null,
+  init() {
+    const eng = $('trEngine');
+    if (!ChromeEngine.supported()) {
+      const o = eng.querySelector('option[value="chrome"]');
+      if (o) o.remove();
+    }
+    const savedEng = Util.store.get('trEngine');
+    if (savedEng && eng.querySelector('option[value="' + savedEng + '"]')) eng.value = savedEng;
+    eng.addEventListener('change', () => { Util.store.set('trEngine', eng.value); this.refreshHint(); });
+    $('trSrc').addEventListener('change', () => this.refreshHint());
+
+    const email = $('mmEmail'), rem = $('mmRemember');
+    if (Util.store.get('mmRemember') === '1') { rem.checked = true; email.value = Util.store.get('mmEmail') || ''; }
+    email.addEventListener('input', () => { if (rem.checked) Util.store.set('mmEmail', email.value.trim()); this.refreshHint(); });
+    rem.addEventListener('change', () => {
+      if (rem.checked) { Util.store.set('mmRemember', '1'); Util.store.set('mmEmail', email.value.trim()); }
+      else { Util.store.remove('mmRemember'); Util.store.remove('mmEmail'); }
+    });
+
+    $('trBtn').addEventListener('click', () => this.run(null, false));
+    $('trAllBtn').addEventListener('click', () => this.run(null, true));
+    $('trCancelBtn').addEventListener('click', () => this.cancel());
+    this.refreshHint();
+  },
+  updateButtons() {
+    const has = state.segments.length > 0, t = state.translating;
+    $('trBtn').classList.toggle('hidden', t);
+    $('trAllBtn').classList.toggle('hidden', t);
+    $('trCancelBtn').classList.toggle('hidden', !t);
+    $('trBtn').disabled = !has || state.busy;
+    $('trAllBtn').disabled = !has || state.busy;
+    $('trSrc').disabled = t;
+    $('trEngine').disabled = t;
+    document.querySelectorAll('[data-act="tr"]').forEach((b) => { b.disabled = t || state.busy; });
+    if (!state.busy) $('startBtn').disabled = !state.file || t;
+  },
+  srcName(code) {
+    const o = $('trSrc').querySelector('option[value="' + code + '"]');
+    return o ? o.textContent : code;
+  },
+  // Called after a fresh transcription: pick the source language.
+  onNewSegments(whisperLang) {
+    UI.clearAlerts('trAlerts');
+    $('stTr').classList.add('hidden');
+    const iso = WHISPER_TO_ISO[whisperLang];
+    $('trSrc').value = '';
+    if (iso === 'tr') {
+      UI.alert('info', 'Video dili Türkçe olarak seçilmişti; çeviriye gerek yok. Video başka bir dildeyse kaynak dili elle seç.', 'trAlerts');
+    } else if (iso) {
+      $('trSrc').value = iso;
+    } else {
+      this.detectSource();
+    }
+    this.refreshHint();
+  },
+  // Desktop Chrome only: detect the language of the transcript (no download is triggered here).
+  async detectSource() {
+    if (!('LanguageDetector' in self)) return;
+    try {
+      if ((await self.LanguageDetector.availability()) !== 'available') return;
+      const det = await self.LanguageDetector.create();
+      const sample = state.segments.map((s) => s.text).join(' ').slice(0, 2000);
+      const r = await det.detect(sample);
+      try { det.destroy(); } catch (e) {}
+      const top = r && r[0];
+      if (!top || top.confidence < 0.5 || $('trSrc').value) return;
+      const code = String(top.detectedLanguage || '').split('-')[0];
+      if (code === 'tr') {
+        UI.alert('info', 'Metin Türkçe görünüyor; çeviriye gerek olmayabilir.', 'trAlerts');
+      } else if ($('trSrc').querySelector('option[value="' + code + '"]')) {
+        $('trSrc').value = code;
+        UI.alert('info', 'Kaynak dil otomatik algılandı: ' + this.srcName(code) + '. Yanlışsa elle değiştir.', 'trAlerts');
+        this.refreshHint();
+      }
+    } catch (e) { /* detection is optional */ }
+  },
+  pending() { return state.segments.filter((s) => s.text.trim() && !(s.translation || '').trim()); },
+  refreshHint() {
+    const pref = $('trEngine').value;
+    $('mmBox').classList.toggle('hidden', pref === 'chrome');
+    const p = this.pending();
+    const chars = p.reduce((a, s) => a + s.text.trim().length, 0);
+    let h = 'Çevrilmemiş: ' + p.length + ' cümle (~' + chars.toLocaleString('tr-TR') + ' karakter). ';
+    if (pref === 'mymemory') {
+      h += 'MyMemory internet ister; günlük ücretsiz sınır e-postasız ~5.000, e-postayla ~50.000 karakter.';
+    } else if (ChromeEngine.supported()) {
+      h += 'Bu tarayıcıda Chrome yerleşik çeviri var: ilk kullanımda dil paketi bir kez indirilir, sonra internetsiz ve sınırsız çalışır. Dil çifti desteklenmezse MyMemory kullanılır.';
+    } else {
+      h += 'Bu cihazda Chrome yerleşik çeviri yok (telefon veya eski Chrome), MyMemory kullanılacak. Günlük ücretsiz sınır e-postasız ~5.000, e-postayla ~50.000 karakter.';
+    }
+    $('trHint').textContent = h;
+  },
+  async resolveEngine(src) {
+    if ($('trEngine').value === 'mymemory') return MyMemoryEngine;
+    const av = await ChromeEngine.availability(src);
+    if (av !== 'unavailable') return ChromeEngine;
+    if ($('trEngine').value === 'chrome') {
+      UI.alert('info', 'Chrome yerleşik çeviri ' + this.srcName(src) + ' → Türkçe için kullanılamıyor; MyMemory kullanılıyor.', 'trAlerts');
+    }
+    return MyMemoryEngine;
+  },
+  errorMessage(e) {
+    const tail = ' Çevrilen cümleler korunur; "Boş olanları çevir"e tekrar basınca kalanlardan devam eder.';
+    switch (e && e.kind) {
+      case 'network': return 'İnternet bağlantısı yok veya MyMemory\'ye ulaşılamadı.' + tail;
+      case 'quota': return 'MyMemory günlük ücretsiz sınırı doldu.' +
+        (MyMemoryEngine.email ? ' Yarın devam edebilirsin.' : ' E-posta girerek sınırı artırabilir ya da yarın devam edebilirsin.') +
+        (ChromeEngine.supported() ? '' : ' Masaüstü Chrome\'da sınırsız yerleşik çeviri kullanılabilir.') + tail;
+      case 'service': return 'MyMemory bir hata döndürdü: ' + e.message + '.' + tail;
+      default: return 'Çeviri hatası: ' + (e && e.message || 'bilinmiyor') + '.' + tail;
+    }
+  },
+  async run(ids, overwrite) {
+    if (state.translating || state.busy) return;
+    UI.clearAlerts('trAlerts');
+    const src = $('trSrc').value;
+    if (!src) { UI.alert('err', 'Önce videonun kaynak dilini seç.', 'trAlerts'); $('trSrc').focus(); return; }
+
+    let targets;
+    if (ids) {
+      targets = ids.map((id) => Segments.get(id)).filter((s) => s && s.text.trim());
+      if (targets.length === 1 && (targets[0].translation || '').trim() &&
+          !confirm('Bu cümlenin mevcut çevirisi yenisiyle değiştirilecek. Devam edilsin mi?')) return;
+    } else if (overwrite) {
+      targets = state.segments.filter((s) => s.text.trim());
+      const filled = state.segments.filter((s) => (s.translation || '').trim()).length;
+      if (filled && !confirm(filled + ' mevcut çeviri (elle düzelttiklerin dahil) silinip yeniden çevrilecek. Devam edilsin mi?')) return;
+    } else {
+      targets = this.pending();
+    }
+    if (!targets.length) { UI.toast('Çevrilecek cümle yok'); return; }
+
+    state.translating = true;
+    this.cancelled = false;
+    this.abortCtrl = new AbortController();
+    const signal = this.abortCtrl.signal;
+    this.updateButtons();
+    let done = 0;
+    try {
+      UI.stage('stTr', { status: 'Hazırlanıyor…', indet: true });
+      let engine = await this.resolveEngine(src);
+      if (engine === ChromeEngine) {
+        try {
+          await ChromeEngine.prepare(src, (f) => UI.stage('stTr', { status: 'Dil paketi indiriliyor ' + Math.round(f * 100) + '%', pct: f * 100 }), signal);
+        } catch (e) {
+          ChromeEngine.dispose();
+          if ((e && e.name === 'AbortError') || this.cancelled) throw e;
+          UI.alert('info', 'Chrome yerleşik çeviri başlatılamadı (' + (e && e.message || e) + '). MyMemory\'ye geçildi.', 'trAlerts');
+          engine = MyMemoryEngine;
+        }
+      }
+      if (engine === MyMemoryEngine) {
+        if (navigator.onLine === false) throw Object.assign(new Error('offline'), { kind: 'network' });
+        MyMemoryEngine.email = $('mmEmail').value.trim();
+        const chars = targets.reduce((a, s) => a + s.text.trim().length, 0);
+        const limit = MyMemoryEngine.email ? 50000 : 5000;
+        if (chars > limit && !confirm('Bu çeviri ~' + chars.toLocaleString('tr-TR') + ' karakter; MyMemory günlük sınırı ~' +
+            limit.toLocaleString('tr-TR') + '. Sınır dolunca çeviri durur (çevrilenler korunur). Devam edilsin mi?')) {
+          this.cancelled = true;
+        }
+      }
+      $('stTrLabel').textContent = 'Çeviri motoru: ' + engine.label;
+      if (!this.cancelled) UI.stage('stTr', { status: '0/' + targets.length + ' cümle', pct: 0 });
+
+      for (const s of targets) {
+        if (this.cancelled) break;
+        Segments.markTranslating(s.id, true);
+        try {
+          const out = await engine.translate(s.text.trim(), src, signal);
+          if (this.cancelled) break;
+          s.translation = String(out || '').trim();
+          Segments.showTranslation(s.id);
+        } finally {
+          Segments.markTranslating(s.id, false);
+        }
+        done++;
+        UI.stage('stTr', { status: done + '/' + targets.length + ' cümle', pct: (done / targets.length) * 100 });
+      }
+      if (this.cancelled) UI.stage('stTr', { status: 'Durduruldu · ' + done + ' cümle çevrildi', pct: (done / targets.length) * 100 });
+      else { UI.stage('stTr', { status: 'Tamam · ' + done + ' cümle', done: true }); UI.toast('Çeviri tamamlandı'); }
+    } catch (e) {
+      if ((e && e.name === 'AbortError') || this.cancelled) {
+        UI.stage('stTr', { status: 'Durduruldu · ' + done + ' cümle çevrildi', pct: (done / targets.length) * 100 });
+      } else {
+        UI.stage('stTr', { status: 'Hata · ' + done + ' cümle çevrildi', fail: true });
+        UI.alert('err', this.errorMessage(e), 'trAlerts');
+      }
+    } finally {
+      state.translating = false;
+      this.abortCtrl = null;
+      this.updateButtons();
+      this.refreshHint();
+    }
+  },
+  cancel() {
+    if (!state.translating) return;
+    this.cancelled = true;
+    if (this.abortCtrl) this.abortCtrl.abort();
+    UI.toast('Çeviri durduruluyor…');
+  },
+};
+
+/* ---------- Settings (remembered in localStorage) ---------- */
+const Settings = {
+  init() {
+    const ls = $('langSelect'), ms = $('modelSelect');
+    const l = Util.store.get('lang'), m = Util.store.get('model');
+    if (l && ls.querySelector('option[value="' + l + '"]')) ls.value = l;
+    if (m && ms.querySelector('option[value="' + m + '"]')) ms.value = m;
+    state.language = ls.value; state.model = ms.value;
+    ls.addEventListener('change', () => { state.language = ls.value; Util.store.set('lang', ls.value); });
+    ms.addEventListener('change', () => { state.model = ms.value; Util.store.set('model', ms.value); });
+  },
+};
+
+/* ---------- Boot ---------- */
+(function boot() {
+  Settings.init();
+  VideoInput.init();
+  Player.init();
+  $('startBtn').addEventListener('click', () => Job.start());
+  $('cancelBtn').addEventListener('click', () => Job.cancel());
+  Translation.init();
+  $('copyAllBtn').addEventListener('click', () => { if (Exporter.warnMissing()) Clip.copy(Exporter.allText(), 'Tüm metin kopyalandı'); });
+  $('txtBtn').addEventListener('click', () => { if (Exporter.warnMissing()) Exporter.download(Exporter.allText(), Exporter.fileName('txt'), 'text/plain'); });
+  $('srtBtn').addEventListener('click', () => { if (Exporter.warnMissing()) Exporter.download(Exporter.buildSrt(), Exporter.fileName('srt'), 'application/x-subrip'); });
+  const savedMode = Util.store.get('exportMode');
+  const em = savedMode && document.querySelector('input[name="exportMode"][value="' + savedMode + '"]');
+  if (em) em.checked = true;
+  document.querySelectorAll('input[name="exportMode"]').forEach((r) => r.addEventListener('change', () => Util.store.set('exportMode', Exporter.mode())));
+  Sync.init();
+  Stepper.init();
+  Stepper.update();
+  window.addEventListener('beforeunload', (e) => { if (state.translating) { e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('beforeunload', (e) => { if (state.busy) { e.preventDefault(); e.returnValue = ''; } });
+  if (!window.isSecureContext) UI.alert('warn', 'Sayfa https üzerinden açılmadı. Model önbelleği ve kopyalama düzgün çalışmayabilir.');
+})();
+</script>
+</body>
+</html>

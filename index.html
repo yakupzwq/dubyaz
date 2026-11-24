@@ -47,6 +47,49 @@
   .save-state.error{color:var(--rec);border-color:rgba(255,90,95,.5);cursor:pointer}
   .save-state.error i{background:var(--rec)}
   @media (max-width:700px){.save-state{padding:5px 8px}.save-state span{display:none}.save-state.error span,.save-state.saving span{display:inline}}
+  .proj-btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 14px;border-radius:99px;border:1px solid var(--line2);
+    background:var(--surface);color:var(--text);font-weight:600;font-size:.9rem;cursor:pointer;flex-shrink:0}
+  .proj-btn:hover{border-color:var(--sub)}
+  .proj-btn svg{width:18px;height:18px;color:var(--sub)}
+  @media (max-width:700px){.proj-btn{padding:0;width:40px;justify-content:center}.proj-btn span{display:none}}
+  .brand{cursor:pointer}
+  /* Project list */
+  .hero-projects{grid-column:1/-1}
+  .hp-head,.pd-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .hp-head h2{font-size:1.5rem}
+  .hp-head > span,.pd-head > span{color:var(--muted);font-size:.92rem}
+  .hp-head .btn{margin-left:auto}
+  .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  @media (max-width:460px){.plist{grid-template-columns:1fr}}
+  .pcard{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line);min-width:0}
+  .pcard.current{border-color:rgba(255,210,63,.55)}
+  .pcard-main{display:flex;align-items:center;gap:12px;background:none;border:0;padding:0;text-align:left;cursor:pointer;color:inherit;min-width:0}
+  .pcard-main:hover .pname{color:var(--sub)}
+  .pthumb{position:relative;width:64px;height:48px;border-radius:12px;background:linear-gradient(135deg,#3a2a52,#22304f);display:grid;place-items:center;color:var(--sub);flex-shrink:0}
+  .pthumb svg{width:22px;height:22px}
+  .pthumb em{position:absolute;right:4px;bottom:3px;font-style:normal;font-size:.68rem;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:0 4px;border-radius:4px;font-variant-numeric:tabular-nums}
+  .pthumb em:empty{display:none}
+  .pinfo{display:flex;flex-direction:column;min-width:0;gap:2px}
+  .pname{font-family:var(--display);font-size:1.08rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .15s}
+  .pdates{display:flex;flex-direction:column;color:var(--muted);font-size:.8rem;line-height:1.35}
+  .pmeta{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:.76rem;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--surface2);color:var(--muted)}
+  .chip.ok{color:var(--sub)} .chip.dub{color:var(--ok)} .chip.warn{color:var(--rec)}
+  .chip.cur{background:var(--sub);color:var(--sub-ink)}
+  .pactions{display:flex;gap:6px;flex-wrap:wrap}
+  .pactions .btn{flex:1 1 auto;min-height:40px;font-size:.86rem;padding:6px 10px}
+  .btn.danger-ghost{color:var(--rec);border-color:rgba(255,90,95,.4)}
+  .btn.danger-ghost:hover{border-color:var(--rec)}
+  .rename-box{display:flex;gap:6px;flex-wrap:wrap}
+  .rename-box input{flex:1 1 160px;min-height:42px;padding:8px 12px;border-radius:10px;background:var(--ink);border:1px solid var(--sub);color:var(--text);font-size:1rem}
+  /* Dialog */
+  #projDialog{width:min(980px,94vw);max-height:86vh;padding:20px;border-radius:24px;border:1px solid var(--line2);background:var(--ink);color:var(--text);overflow:auto}
+  #projDialog::backdrop{background:rgba(10,8,14,.7);backdrop-filter:blur(4px)}
+  .pd-head h2{font-size:1.4rem}
+  .pd-head #projNew{margin-left:auto}
+  .pd-head .icon-btn{font-size:1.5rem;color:var(--text)}
+  .pd-foot{margin:16px 0 0}
+  @media (max-width:600px){#projDialog{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;padding:16px 14px calc(16px + var(--safe-b))}}
   #dropZone.missing{border-color:var(--sub);background:rgba(255,210,63,.06)}
   .steps::-webkit-scrollbar{display:none}
   .step{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:99px;border:1px solid transparent;
@@ -339,6 +382,7 @@
     <button class="step" data-step="4" data-target="dubPanel"><i>4</i>Dublaj</button>
     <button class="step" data-step="5" data-target="exportPanel"><i>5</i>Dışa aktar</button>
   </nav>
+  <button id="projBtn" class="proj-btn" aria-label="Projelerim"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5a2 2 0 0 1 2-2h3.2l1.8 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Projelerim</span></button>
 </header>
 
 <section id="hero">
@@ -347,6 +391,7 @@
     <p>Konuşmaları yazıya dök, Türkçeye çevir, kendi sesinle seslendir ve altyazısı gömülü olarak indir. Telefonda da bilgisayarda da çalışır.</p>
     <div class="hero-cta">
       <button id="heroPick" class="btn primary big">Video seç</button>
+      <button id="heroResume" class="btn big hidden">Projeye dön</button>
       <span>ya da videoyu bu sayfaya sürükle</span>
     </div>
     <p class="hero-note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2l6 2.5v5c0 4-2.7 6.9-6 8.5-3.3-1.6-6-4.5-6-8.5v-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 10l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Hesap yok, yükleme yok. Videon cihazından hiç çıkmaz.</p>
@@ -363,6 +408,11 @@
       <span class="ph"></span>
     </div>
   </div>
+  <section id="heroProjects" class="hero-projects hidden" aria-labelledby="heroProjTitle">
+    <div class="hp-head"><h2 id="heroProjTitle">Projelerim</h2><span id="heroProjCount"></span>
+      <button id="heroProjAll" class="btn sm hidden">Tümünü gör</button></div>
+    <div id="heroProjList" class="plist"></div>
+  </section>
   <ol class="hero-steps">
     <li><b>Yazıya dök</b><span>Konuşmalar zamanlarıyla cümle cümle çıkar.</span></li>
     <li><b>Türkçeye çevir</b><span>Tek dokunuşla çevir, istediğin cümleyi düzelt.</span></li>
@@ -590,7 +640,17 @@
     </div>
   </section>
 </main>
-<p class="foot">DubYaz v1.6. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
+<p class="foot">DubYaz v1.7. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
+
+<dialog id="projDialog" aria-labelledby="projTitle">
+  <div class="pd-head">
+    <h2 id="projTitle">Projelerim</h2><span id="projCount"></span>
+    <button id="projNew" class="btn sm primary">Yeni proje</button>
+    <button id="projClose" class="btn icon-btn" aria-label="Kapat">×</button>
+  </div>
+  <div id="projList" class="plist"></div>
+  <p id="projUsage" class="hint pd-foot"></p>
+</dialog>
 
 <div id="toast" role="status"></div>
 
@@ -974,8 +1034,10 @@ const VideoInput = {
     const el = $('fileInfo');
     el.classList.remove('hidden');
     el.innerHTML = '<b></b><small></small>';
-    el.querySelector('b').textContent = state.file.name;
-    el.querySelector('small').textContent = Util.fmtBytes(state.file.size) + (state.duration ? ', ' + Util.fmtTime(state.duration) : '');
+    const pname = Project.current && Project.current.name;
+    el.querySelector('b').textContent = pname || state.file.name;
+    el.querySelector('small').textContent = (pname && pname !== Util.baseName(state.file.name) ? state.file.name + ', ' : '') +
+      Util.fmtBytes(state.file.size) + (state.duration ? ', ' + Util.fmtTime(state.duration) : '');
   },
 };
 
@@ -2916,6 +2978,7 @@ const Project = {
     this.current = proj;
     this.awaitingVideo = false;
     this.setActive(proj.id);
+    VideoInput.showInfo();
     this.dirty = true;
     await this.flush();
     if (this.current !== proj) return;
@@ -2971,6 +3034,7 @@ const Project = {
       }
       state.duration = data.duration || (meta.video && meta.video.duration) || state.duration;
       Segments.set(segs);
+      if (state.file) VideoInput.showInfo();
       SubStyle.applyOverlay(); Preview.apply(); Export.summary(); Translation.refreshHint(); Translation.updateButtons();
       UI.clearAlerts('trAlerts'); UI.clearAlerts('dubAlerts'); UI.clearAlerts('expAlerts');
       $('stTr').classList.add('hidden');
@@ -2997,6 +3061,241 @@ const Project = {
     }
   },
   pending() { return this.dirty || !!this.saving; },
+};
+
+/* ---------- Projelerim: list, open, rename, copy, delete ---------- */
+const ProjectsUI = {
+  cache: [],
+  init() {
+    const brand = document.querySelector('.brand');
+    brand.setAttribute('role', 'button'); brand.tabIndex = 0; brand.title = 'Ana sayfa';
+    brand.addEventListener('click', () => this.home());
+    brand.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.home(); });
+    $('projBtn').addEventListener('click', () => this.openDialog());
+    $('projClose').addEventListener('click', () => this.closeDialog());
+    $('projDialog').addEventListener('click', (e) => { if (e.target === $('projDialog')) this.closeDialog(); });
+    $('projNew').addEventListener('click', () => { this.closeDialog(); $('fileInput').click(); });
+    $('heroProjAll').addEventListener('click', () => this.openDialog());
+    $('heroResume').addEventListener('click', () => { if (Project.current) this.open(Project.current.id); });
+    [$('projList'), $('heroProjList')].forEach((box) => box.addEventListener('click', (e) => this.onClick(e)));
+  },
+  busyReason() {
+    if (state.busy) return 'Yazıya dökme sürüyor';
+    if (state.translating) return 'Çeviri sürüyor';
+    if (Recorder.activeId != null) return 'Ses kaydı sürüyor';
+    if (Export.running) return 'Dışa aktarma sürüyor';
+    return null;
+  },
+  async list() {
+    if (!Store.ok) return [];
+    const all = await Store.all('projects');
+    return all.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  },
+  fmtDate(ts) {
+    if (!ts) return '-';
+    const d = new Date(ts), now = new Date();
+    const hm = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const sameDay = (a, b) => a.toDateString() === b.toDateString();
+    const y = new Date(now); y.setDate(now.getDate() - 1);
+    if (sameDay(d, now)) return 'bugün ' + hm;
+    if (sameDay(d, y)) return 'dün ' + hm;
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + hm;
+  },
+  stats(p) {
+    const segs = (p.data && p.data.segments) || [];
+    return {
+      n: segs.length,
+      tr: segs.filter((s) => (s.translation || '').trim()).length,
+      dub: segs.filter((s) => s.hasDub).length,
+    };
+  },
+  card(p) {
+    const st = this.stats(p);
+    const isCur = Project.current && Project.current.id === p.id;
+    const el = document.createElement('article');
+    el.className = 'pcard' + (isCur ? ' current' : '');
+    el.dataset.id = p.id;
+    const dur = p.video && p.video.duration ? Util.fmtTime(p.video.duration).replace(/\.\d$/, '') : '';
+    el.innerHTML =
+      '<button class="pcard-main" data-act="open" aria-label="Projeyi aç">' +
+        '<span class="pthumb"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="4" width="16" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 7.5v5l4-2.5z" fill="currentColor"/></svg><em></em></span>' +
+        '<span class="pinfo"><b class="pname"></b><small class="pdates"></small></span>' +
+      '</button>' +
+      '<div class="pmeta"></div>' +
+      '<div class="pactions">' +
+        '<button class="btn sm" data-act="rename">Adını değiştir</button>' +
+        '<button class="btn sm" data-act="copy">Kopyala</button>' +
+        '<button class="btn sm danger-ghost" data-act="delete">Sil</button>' +
+      '</div>';
+    el.querySelector('em').textContent = dur;
+    el.querySelector('.pname').textContent = p.name || 'Adsız proje';
+    el.querySelector('.pdates').innerHTML = '<span></span><span></span>';
+    const [c, u] = el.querySelectorAll('.pdates span');
+    c.textContent = 'Oluşturma: ' + this.fmtDate(p.createdAt);
+    u.textContent = 'Son düzenleme: ' + this.fmtDate(p.updatedAt);
+    c.title = new Date(p.createdAt).toLocaleString('tr-TR');
+    u.title = new Date(p.updatedAt).toLocaleString('tr-TR');
+    const meta = el.querySelector('.pmeta');
+    const chip = (t, cls) => { const s = document.createElement('span'); s.className = 'chip' + (cls ? ' ' + cls : ''); s.textContent = t; meta.appendChild(s); };
+    if (isCur) chip('Açık', 'cur');
+    chip(st.n + ' cümle');
+    if (st.n) chip(st.tr + ' çeviri', st.tr === st.n ? 'ok' : '');
+    if (st.n) chip(st.dub + ' ses', st.dub ? 'dub' : '');
+    if (!p.videoStored) chip('Video yok', 'warn');
+    return el;
+  },
+  render(box, items, limit) {
+    box.innerHTML = '';
+    const list = limit ? items.slice(0, limit) : items;
+    if (!list.length) {
+      box.innerHTML = '<div class="empty"><b>Henüz proje yok</b>Bir video seçtiğinde otomatik olarak burada bir proje oluşur.</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    list.forEach((p) => frag.appendChild(this.card(p)));
+    box.appendChild(frag);
+  },
+  async refresh() {
+    let items = [];
+    try { items = await this.list(); } catch (e) { UI.toast('Projeler okunamadı: ' + e.message); }
+    this.cache = items;
+    this.render($('projList'), items);
+    this.render($('heroProjList'), items, 6);
+    $('heroProjects').classList.toggle('hidden', !items.length);
+    $('heroProjCount').textContent = items.length > 6 ? 'Son 6 proje (toplam ' + items.length + ')' : items.length + ' proje';
+    $('heroProjAll').classList.toggle('hidden', items.length <= 6);
+    $('projCount').textContent = items.length + ' proje';
+    const cur = Project.current;
+    $('heroResume').classList.toggle('hidden', !cur);
+    if (cur) $('heroResume').textContent = '"' + (cur.name.length > 22 ? cur.name.slice(0, 21) + '…' : cur.name) + '" projesine dön';
+    if (navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then(({ usage, quota }) => {
+        $('projUsage').textContent = 'Bu cihazda kullanılan alan: ' + Util.fmtBytes(usage || 0) + (quota ? ' (kullanılabilir: ~' + Util.fmtBytes(quota) + ')' : '');
+      }).catch(() => {});
+    }
+  },
+  async openDialog() {
+    if (!Store.ok) { UI.toast('Bu tarayıcıda proje kaydı kullanılamıyor'); return; }
+    await Project.flush();
+    await this.refresh();
+    const d = $('projDialog');
+    if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+  },
+  closeDialog() { const d = $('projDialog'); if (d.open) { if (d.close) d.close(); else d.removeAttribute('open'); } },
+  async home() {
+    await Project.flush();
+    Player.stop(); $('video').pause();
+    document.body.classList.add('no-file');
+    window.scrollTo(0, 0);
+    this.refresh();
+  },
+  onClick(e) {
+    const btn = e.target.closest('[data-act]');
+    const card = e.target.closest('.pcard');
+    if (!btn || !card) return;
+    const id = card.dataset.id, act = btn.dataset.act;
+    if (act === 'open') this.open(id);
+    else if (act === 'rename') this.rename(id, card);
+    else if (act === 'copy') this.copy(id);
+    else if (act === 'delete') this.remove(id);
+  },
+  async open(id) {
+    // Same project already loaded: just go back to it.
+    if (Project.current && Project.current.id === id && (state.file || Project.awaitingVideo)) {
+      this.closeDialog(); document.body.classList.remove('no-file'); window.scrollTo(0, 0); return;
+    }
+    const why = this.busyReason();
+    if (why) { UI.toast(why + '; bitince proje açabilirsin'); return; }
+    try {
+      await Project.flush();
+      const ok = await Project.open(id);
+      if (!ok) { UI.toast('Proje bulunamadı'); this.refresh(); return; }
+      this.closeDialog();
+      document.body.classList.remove('no-file');
+      window.scrollTo(0, 0);
+      UI.toast('Proje açıldı: ' + Project.current.name);
+    } catch (e) {
+      UI.alert('err', 'Proje açılamadı: ' + (e && e.message || e));
+    }
+  },
+  rename(id, card) {
+    const nameEl = card.querySelector('.pname');
+    if (card.querySelector('.rename-box')) return;
+    const p = this.cache.find((x) => x.id === id);
+    const box = document.createElement('div');
+    box.className = 'rename-box';
+    box.innerHTML = '<input type="text" maxlength="80" aria-label="Yeni proje adı"><button class="btn sm primary" data-r="ok">Kaydet</button><button class="btn sm" data-r="cancel">Vazgeç</button>';
+    const input = box.querySelector('input');
+    input.value = p ? p.name : nameEl.textContent;
+    card.querySelector('.pactions').classList.add('hidden');
+    card.appendChild(box);
+    input.focus(); input.select();
+    const done = async (save) => {
+      const name = input.value.trim();
+      box.remove(); card.querySelector('.pactions').classList.remove('hidden');
+      if (!save || !name || (p && name === p.name)) return;
+      try {
+        if (Project.current && Project.current.id === id) { Project.current.name = name; Project.markDirty(); await Project.flush(); VideoInput.showInfo(); }
+        else {
+          const rec = await Store.get('projects', id);
+          if (!rec) throw new Error('Proje bulunamadı');
+          rec.name = name;
+          await Store.tx(['projects'], 'readwrite', (s) => { s.projects.put(rec); });
+        }
+        UI.toast('Proje adı değiştirildi');
+      } catch (e) { UI.toast('Ad değiştirilemedi: ' + e.message); }
+      this.refresh();
+    };
+    box.addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) done(b.dataset.r === 'ok'); });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); });
+  },
+  async copy(id) {
+    try {
+      if (Project.current && Project.current.id === id) await Project.flush();
+      const [meta, vid, dubs] = await Promise.all([Store.get('projects', id), Store.get('videos', id), Store.dubsOf(id)]);
+      if (!meta) throw new Error('Proje bulunamadı');
+      const nid = Project.newId(), now = Date.now();
+      const copy = JSON.parse(JSON.stringify(meta));
+      copy.id = nid; copy.name = (meta.name || 'Proje') + ' (kopya)'; copy.createdAt = now; copy.updatedAt = now;
+      await Store.tx(['projects', 'videos', 'dubs'], 'readwrite', (s) => {
+        s.projects.put(copy);
+        if (vid && vid.blob) s.videos.put({ projectId: nid, blob: vid.blob });
+        dubs.forEach((d) => s.dubs.put({ key: nid + '|' + d.segId, projectId: nid, segId: d.segId, pcm: d.pcm, sr: d.sr, dur: d.dur }));
+      });
+      UI.toast('Proje kopyalandı: ' + copy.name);
+    } catch (e) {
+      UI.toast(Project.errorText(e));
+    }
+    this.refresh();
+  },
+  async remove(id) {
+    const p = this.cache.find((x) => x.id === id);
+    const isCur = Project.current && Project.current.id === id;
+    if (isCur) { const why = this.busyReason(); if (why) { UI.toast(why + '; önce bitir'); return; } }
+    if (!confirm('"' + (p ? p.name : 'Proje') + '" silinsin mi? Cümleler, çeviriler, ses kayıtları ve kayıtlı video bu cihazdan kalıcı olarak silinir.')) return;
+    try {
+      if (isCur) {
+        clearTimeout(Project.timer);
+        Project.dirty = false; Project.current = null; Project.awaitingVideo = false; Project.setActive(null);
+        Project.restoring = true;
+        try { Segments.set([]); } finally { Project.restoring = false; }
+        if (state.videoUrl) URL.revokeObjectURL(state.videoUrl);
+        state.file = null; state.videoUrl = null; state.duration = 0;
+        OrigAudio.reset(); Timeline.reset();
+        const v = $('video'); v.removeAttribute('src'); v.load();
+        $('videoStage').classList.add('hidden');
+        SaveState.hide();
+        document.body.classList.add('no-file');
+      }
+      await Store.tx(['projects', 'videos', 'dubs'], 'readwrite', (s) => {
+        s.projects.delete(id); s.videos.delete(id); Store.clearDubsIn(s.dubs, id);
+      });
+      UI.toast('Proje silindi');
+    } catch (e) {
+      UI.toast('Silinemedi: ' + e.message);
+    }
+    this.refresh();
+  },
 };
 
 /* ---------- Settings (remembered in localStorage) ---------- */
@@ -3054,7 +3353,8 @@ const Settings = {
   window.addEventListener('beforeunload', (e) => { if (state.translating) { e.preventDefault(); e.returnValue = ''; } });
   window.addEventListener('beforeunload', (e) => { if (state.busy) { e.preventDefault(); e.returnValue = ''; } });
   if (!window.isSecureContext) UI.alert('warn', 'Sayfa https üzerinden açılmadı. Model önbelleği ve kopyalama düzgün çalışmayabilir.');
-  Project.boot();
+  ProjectsUI.init();
+  Project.boot().then(() => ProjectsUI.refresh());
 })();
 </script>
 </body>

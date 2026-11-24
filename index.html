@@ -284,7 +284,7 @@
   @keyframes blink{50%{opacity:.2}}
   .line.dub{border-top:1px solid var(--line);padding-top:8px;align-items:center;flex-wrap:wrap}
   .line.dub .tag{margin-top:0;background:rgba(255,90,95,.14);color:var(--rec)}
-  .dub-info{flex:1;min-width:120px;font-size:.88rem;color:var(--muted);padding:0 6px}
+  .dub-info{flex:1;min-width:120px;font-size:.88rem;line-height:1.4;min-height:2.8em;display:flex;align-items:center;color:var(--muted);padding:0 6px}
   @media (max-width:600px){
     .dub-info{flex:1 1 calc(100% - 52px)}
     .line.dub .rec-btn{margin-left:auto}
@@ -580,7 +580,7 @@
     </div>
   </section>
 </main>
-<p class="foot">DubYaz v1.4. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
+<p class="foot">DubYaz v1.5. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
 
 <div id="toast" role="status"></div>
 
@@ -1354,9 +1354,11 @@ const Sync = {
     const card = Segments.card(id);
     if (!card) return;
     card.classList.add('live');
-    // Follow playback, but never steal the view while the user is editing.
+    // Follow playback only during normal viewing: never while recording or
+    // listening to a dub, never while editing, never right after the user scrolled.
     const editing = document.activeElement && document.activeElement.tagName === 'TEXTAREA';
-    if (!v.paused && !editing) {
+    const userBusy = Date.now() - ScrollGuard.lastUserInput < 4000;
+    if (!v.paused && !editing && !userBusy && Recorder.activeId == null && !Player.noFollow) {
       const r = card.getBoundingClientRect();
       if (r.top < 90 || r.bottom > window.innerHeight - 20) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -1423,6 +1425,7 @@ const Player = {
     if (el) el.classList.toggle('playing', on);
   },
   stop() {
+    this.noFollow = false;
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = null;
     this.endAt = null;
@@ -2069,6 +2072,24 @@ const Preview = {
   },
 };
 
+/* ---------- Scroll guard: keep the page still during recording ---------- */
+const ScrollGuard = {
+  lastUserInput: 0, active: false, y: 0,
+  init() {
+    const mark = () => { this.lastUserInput = Date.now(); };
+    ['touchstart', 'touchmove', 'wheel', 'pointerdown', 'keydown'].forEach((ev) =>
+      window.addEventListener(ev, mark, { passive: true, capture: true }));
+    window.addEventListener('scroll', () => {
+      if (!this.active) return;
+      if (Date.now() - this.lastUserInput < 800) { this.y = window.scrollY; return; } // the user scrolled
+      if (Math.abs(window.scrollY - this.y) > 1) window.scrollTo(0, this.y);         // something else did: undo
+    }, { passive: true });
+  },
+  start() { this.active = true; this.y = window.scrollY; },
+  // Keep guarding briefly after recording so late layout changes cannot move the page.
+  stop() { setTimeout(() => { if (Recorder.activeId == null) this.active = false; }, 1200); },
+};
+
 /* ---------- Microphone recording per sentence ---------- */
 const Recorder = {
   stream: null, rec: null, activeId: null, phase: null, timer: null, guard: null, cancelled: false,
@@ -2106,10 +2127,12 @@ const Recorder = {
     if (!s) return;
     if (s.dub && !confirm('Bu cümlenin mevcut kaydı silinip yenisi alınacak. Devam edilsin mi?')) return;
     UI.clearAlerts('dubAlerts');
+    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') document.activeElement.blur();
     let stream;
     try { stream = await this.getStream(); }
     catch (e) { UI.alert('err', this.micError(e), 'dubAlerts'); $('dubPanel').open = true; return; }
 
+    ScrollGuard.start();
     this.activeId = id; this.cancelled = false; this.phase = 'countdown';
     Float.update();
     const v = $('video');
@@ -2142,7 +2165,7 @@ const Recorder = {
     v.play().catch(() => {});
     this.timer = setInterval(() => {
       const el = (performance.now() - t0) / 1000;
-      Segments.dubUI(id, 'Kaydediliyor ' + el.toFixed(1) + ' sn, bitince düğmeye bas');
+      Segments.dubUI(id, 'Kayıt ' + el.toFixed(1) + ' sn. Bitince Bitir\'e bas.');
       if (!v.paused && v.currentTime >= slotEnd) v.pause();
     }, 100);
     // Safety stop so a forgotten recording does not run forever.
@@ -2191,6 +2214,7 @@ const Recorder = {
     if (id != null) Segments.dubUI(id);
     Dub.refresh();
     Float.update();
+    ScrollGuard.stop();
   },
 };
 
@@ -2240,6 +2264,7 @@ const Dub = {
     if (!s || !s.dub) return;
     Preview.setMode('dub');
     Preview.ensureCtx();
+    Player.noFollow = true;
     Player.playSegment(id, { untilSlot: true });
   },
 };
@@ -2683,6 +2708,7 @@ const Settings = {
   const em = savedMode && document.querySelector('input[name="exportMode"][value="' + savedMode + '"]');
   if (em) em.checked = true;
   document.querySelectorAll('input[name="exportMode"]').forEach((r) => r.addEventListener('change', () => Util.store.set('exportMode', Exporter.mode())));
+  ScrollGuard.init();
   Hero.init();
   Timeline.init();
   Float.init();

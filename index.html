@@ -39,6 +39,15 @@
   .brand svg{width:34px;height:34px}
   .brand b{font-family:var(--display);font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
   .steps{display:flex;gap:6px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+  .save-state{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;font-weight:600;color:var(--muted);padding:5px 10px;border-radius:99px;
+    background:var(--surface);border:1px solid var(--line);white-space:nowrap;cursor:default}
+  .save-state i{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+  .save-state.saving i{background:var(--sub);animation:blink 1s infinite}
+  .save-state.saved i{background:var(--ok)}
+  .save-state.error{color:var(--rec);border-color:rgba(255,90,95,.5);cursor:pointer}
+  .save-state.error i{background:var(--rec)}
+  @media (max-width:700px){.save-state{padding:5px 8px}.save-state span{display:none}.save-state.error span,.save-state.saving span{display:inline}}
+  #dropZone.missing{border-color:var(--sub);background:rgba(255,210,63,.06)}
   .steps::-webkit-scrollbar{display:none}
   .step{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:99px;border:1px solid transparent;
     background:none;cursor:pointer;color:var(--dim);font-weight:600;font-size:.9rem;white-space:nowrap;min-height:40px}
@@ -322,6 +331,7 @@
     <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="3" width="32" height="24" rx="7" fill="#ffd23f"/><path d="M9 27l-2 6 8-6z" fill="#ffd23f"/><rect x="7" y="11" width="20" height="3" rx="1.5" fill="#2a2100"/><rect x="10" y="17" width="14" height="3" rx="1.5" fill="#2a2100"/></svg>
     <b>DubYaz</b>
   </div>
+  <div id="saveState" class="save-state hidden" role="status" title=""><i></i><span>Kaydedildi</span></div>
   <nav class="steps" aria-label="Adımlar">
     <button class="step active" data-step="1" data-target="dropZone"><i>1</i>Video</button>
     <button class="step" data-step="2" data-target="asrPanel"><i>2</i>Yazıya dök</button>
@@ -580,7 +590,7 @@
     </div>
   </section>
 </main>
-<p class="foot">DubYaz v1.5. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
+<p class="foot">DubYaz v1.6. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
 
 <div id="toast" role="status"></div>
 
@@ -881,7 +891,9 @@ const VideoInput = {
 
     const v = $('video');
     v.addEventListener('loadedmetadata', () => {
+      const had = state.duration;
       state.duration = isFinite(v.duration) ? v.duration : 0;
+      if (state.duration && Math.abs(state.duration - had) > 0.01) Project.markDirty();
       this.showInfo();
     });
     v.addEventListener('error', () => {
@@ -892,18 +904,40 @@ const VideoInput = {
     if (file.type && file.type.startsWith('video/')) return true;
     return /\.(mp4|m4v|webm|mov|mkv|avi|3gp|ogv|mpeg|mpg)$/i.test(file.name || '');
   },
-  load(file) {
+  async load(file) {
     if (state.busy || state.translating || Export.running || Recorder.activeId != null) { UI.toast('Önce devam eden işlemi bitir veya durdur'); return; }
     UI.clearAlerts();
     if (!this.isVideo(file)) { UI.alert('err', Errors.message('unsupported')); return; }
-    if (state.segments.length && !confirm('Yeni video seçilirse mevcut cümleler' + (Mix.dubbed().length ? ' ve dublaj kayıtları' : '') + ' silinecek. Devam edilsin mi?')) return;
+    // A restored project whose video is missing: attach this file to it.
+    if (Project.current && Project.awaitingVideo) {
+      const want = Project.current.video || {};
+      if (want.name && (file.name !== want.name || (want.size && file.size !== want.size)) &&
+          !confirm('Bu proje "' + want.name + '" videosuyla oluşturulmuştu. Seçtiğin video farklı görünüyor; yine de bu projeye bağlansın mı?')) return;
+      this.attach(file);
+      Project.awaitingVideo = false;
+      Project.saveVideo(file);
+      UI.toast('Video projeye bağlandı');
+      return;
+    }
+    if (state.segments.length && Project.current && !confirm('Yeni video yeni bir proje olarak açılacak. Şu anki proje otomatik kaydedildi ve silinmeyecek. Devam edilsin mi?')) return;
+    if (state.segments.length && !Project.current && !confirm('Yeni video seçilirse mevcut cümleler silinecek. Devam edilsin mi?')) return;
+    // Finish saving the previous project before switching.
+    await Project.flush();
+    Project.current = null;
+    Project.restoring = true;
+    try { Segments.set([]); } finally { Project.restoring = false; }
+    this.attach(file);
+    Project.create(file);
+  },
+  // Put a video into the player/UI (no project bookkeeping).
+  attach(file) {
+    $('dropZone').classList.remove('missing');
     if (state.videoUrl) URL.revokeObjectURL(state.videoUrl);
     state.file = file;
     state.duration = 0;
     OrigAudio.reset();
     $('expResult').classList.add('hidden');
     state.videoUrl = URL.createObjectURL(file);
-    Segments.set([]);
     const v = $('video');
     v.src = state.videoUrl;
     $('videoStage').classList.remove('hidden');
@@ -913,6 +947,25 @@ const VideoInput = {
     Timeline.reset();
     this.showInfo();
     $('startBtn').disabled = false;
+    $('progressCard').classList.add('hidden');
+    Timeline.show(state.segments.length > 0);
+    Stepper.update();
+  },
+  // Project restored without its video: show what to pick, keep sentences visible.
+  showMissing(info) {
+    if (state.videoUrl) URL.revokeObjectURL(state.videoUrl);
+    state.file = null; state.videoUrl = null;
+    OrigAudio.reset(); Timeline.reset();
+    const v = $('video'); v.removeAttribute('src'); v.load();
+    document.body.classList.remove('no-file');
+    $('videoStage').classList.add('hidden');
+    $('dropZone').classList.add('missing');
+    const el = $('fileInfo');
+    el.classList.remove('hidden');
+    el.innerHTML = '<b></b><small></small>';
+    el.querySelector('b').textContent = 'Video eksik: ' + (info.name || 'bilinmiyor');
+    el.querySelector('small').textContent = 'Devam etmek için aynı videoyu tekrar seç.';
+    $('startBtn').disabled = true;
     $('progressCard').classList.add('hidden');
     Stepper.update();
   },
@@ -1200,6 +1253,7 @@ const Segments = {
     this.render();
     Mix.invalidate();
     Dub.refresh();
+    Project.markAllDubsReset();
   },
   // Update the dub row of one card (status text, buttons) without re-rendering.
   dubUI(id, liveText) {
@@ -1228,6 +1282,7 @@ const Segments = {
   card(id) { return document.querySelector('.seg[data-id="' + id + '"]'); },
   // Update one card's translation box without re-rendering (keeps focus/scroll).
   showTranslation(id) {
+    Project.markDirty();
     const s = this.get(id), c = this.card(id);
     if (!s || !c) return;
     const tt = c.querySelector('textarea.tr');
@@ -1284,10 +1339,10 @@ const Segments = {
       card.querySelector('.t2').textContent = Util.fmtTime(s.end);
       const ta = card.querySelector('textarea.orig');
       ta.value = s.text;
-      ta.addEventListener('input', () => { s.text = ta.value; this.autosize(ta); Sync.refresh(); });
+      ta.addEventListener('input', () => { s.text = ta.value; this.autosize(ta); Sync.refresh(); Project.markDirty(); });
       const tt = card.querySelector('textarea.tr');
       tt.value = s.translation || '';
-      tt.addEventListener('input', () => { s.translation = tt.value; this.autosize(tt); Translation.refreshHint(); Stepper.update(); Sync.refresh(); });
+      tt.addEventListener('input', () => { s.translation = tt.value; this.autosize(tt); Translation.refreshHint(); Stepper.update(); Sync.refresh(); Project.markDirty(); });
       card.querySelector('[data-act="play"]').addEventListener('click', () => {
         if (Player.activeId === s.id) { $('video').pause(); Player.stop(); } else Player.playSegment(s.id);
       });
@@ -2191,6 +2246,7 @@ const Recorder = {
         const pk = DSP.peak(pcm);
         if (pk > 0 && pk < 0.7) { const gain = Math.min(0.89 / pk, 4); pcm = pcm.map((x) => x * gain); }
         s.dub = { pcm, sr: decoded.sampleRate, dur: pcm.length / decoded.sampleRate, cache: null };
+        Project.markDub(s.id);
         Mix.invalidate();
         const f = DubFit.info(s);
         if (!f.fits) UI.toast('Kayıt cümleye sığmıyor; daha hızlı okuyup tekrar kaydedebilirsin');
@@ -2241,6 +2297,7 @@ const Dub = {
       const n = Mix.dubbed().length;
       if (!n || !confirm(n + ' dublaj kaydı silinecek. Emin misin?')) return;
       state.segments.forEach((s) => { s.dub = null; });
+      Project.markAllDubsReset();
       Mix.invalidate();
       state.segments.forEach((s) => Segments.dubUI(s.id));
       this.refresh();
@@ -2258,6 +2315,7 @@ const Dub = {
     if (!s || !s.dub) return;
     if (!confirm('Bu cümlenin dublaj kaydı silinsin mi?')) return;
     s.dub = null; Mix.invalidate(); Segments.dubUI(id); this.refresh();
+    Project.markDubDeleted(id);
   },
   listen(id) {
     const s = Segments.get(id);
@@ -2680,6 +2738,267 @@ const Float = {
   },
 };
 
+/* =====================================================================
+   STEP 4 (v1.6) — Projects & autosave.
+   IndexedDB "dubyaz" (v1):
+     projects : {id, name, createdAt, updatedAt, video:{name,type,size,lastModified,duration}, videoStored, data:{...}}
+     videos   : {projectId, blob}
+     dubs     : {key:"<projectId>|<segId>", projectId, segId, pcm:Float32Array, sr, dur}  (index byProject)
+   Every write is keyed by project id, so projects never share data.
+   ===================================================================== */
+const Store = {
+  db: null, ok: false, error: null,
+  open() {
+    return new Promise((resolve) => {
+      if (!window.indexedDB) { this.error = 'unsupported'; resolve(false); return; }
+      let req;
+      try { req = indexedDB.open('dubyaz', 1); } catch (e) { this.error = e.message; resolve(false); return; }
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('videos')) db.createObjectStore('videos', { keyPath: 'projectId' });
+        if (!db.objectStoreNames.contains('dubs')) db.createObjectStore('dubs', { keyPath: 'key' }).createIndex('byProject', 'projectId');
+      };
+      req.onsuccess = () => { this.db = req.result; this.ok = true; resolve(true); };
+      req.onerror = () => { this.error = req.error && req.error.message; resolve(false); };
+      req.onblocked = () => { this.error = 'blocked'; resolve(false); };
+    });
+  },
+  // Run fn(stores) inside one transaction; resolves when the transaction commits.
+  tx(names, mode, fn) {
+    return new Promise((resolve, reject) => {
+      if (!this.db) { reject(new Error('Depolama açılamadı')); return; }
+      let t, result;
+      try { t = this.db.transaction(names, mode); } catch (e) { reject(e); return; }
+      const stores = {};
+      names.forEach((n) => { stores[n] = t.objectStore(n); });
+      try { result = fn(stores); } catch (e) { try { t.abort(); } catch (x) {} reject(e); return; }
+      t.oncomplete = () => resolve(result);
+      t.onerror = () => reject(t.error || new Error('Kayıt hatası'));
+      t.onabort = () => reject(t.error || new Error('Kayıt iptal edildi'));
+    });
+  },
+  req(r) { return new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(store, key) { let out; await this.tx([store], 'readonly', (s) => { s[store].get(key).onsuccess = (e) => { out = e.target.result; }; }); return out; },
+  async all(store) { let out = []; await this.tx([store], 'readonly', (s) => { s[store].getAll().onsuccess = (e) => { out = e.target.result || []; }; }); return out; },
+  async dubsOf(projectId) {
+    let out = [];
+    await this.tx(['dubs'], 'readonly', (s) => { s.dubs.index('byProject').getAll(projectId).onsuccess = (e) => { out = e.target.result || []; }; });
+    return out;
+  },
+  // Delete every dub of a project inside an open transaction.
+  clearDubsIn(dubsStore, projectId) {
+    dubsStore.index('byProject').openKeyCursor(IDBKeyRange.only(projectId)).onsuccess = (e) => {
+      const c = e.target.result;
+      if (c) { dubsStore.delete(c.primaryKey); c.continue(); }
+    };
+  },
+};
+
+/* ---------- Save indicator in the top bar ---------- */
+const SaveState = {
+  set(kind, detail) {
+    const el = $('saveState');
+    el.classList.remove('hidden', 'saving', 'saved', 'error', 'off');
+    el.classList.add(kind);
+    el.querySelector('span').textContent = { saving: 'Kaydediliyor…', saved: 'Kaydedildi', error: 'Kaydedilemedi', off: 'Kayıt kapalı' }[kind];
+    el.title = detail || { saving: 'Değişiklikler bu cihaza kaydediliyor', saved: 'Tüm değişiklikler bu cihazda saklı', error: 'Son değişiklikler kaydedilemedi', off: 'Bu tarayıcıda otomatik kayıt kullanılamıyor' }[kind];
+    this.detail = detail || '';
+  },
+  hide() { $('saveState').classList.add('hidden'); },
+};
+
+/* ---------- Current project + debounced autosave ---------- */
+const Project = {
+  current: null,        // {id, name, createdAt, updatedAt, video, videoStored}
+  restoring: false,     // true while state is being filled from storage (no autosave)
+  awaitingVideo: false, // project restored without its video file
+  dirty: false, timer: null, saving: null,
+  dubPut: new Set(), dubDel: new Set(), resetDubs: false,
+  DEBOUNCE: 700,
+  newId() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)); },
+  activeId() { return Util.store.get('activeProject'); },
+  setActive(id) { if (id) Util.store.set('activeProject', id); else Util.store.remove('activeProject'); },
+
+  // Settings that belong to a project (restored when the project opens).
+  readSettings() {
+    const radio = (n) => { const r = document.querySelector('input[name="' + n + '"]:checked'); return r ? r.value : null; };
+    return {
+      language: $('langSelect').value, model: $('modelSelect').value,
+      trSrc: $('trSrc').value, trEngine: $('trEngine').value,
+      subMode: radio('subMode'), audioMode: radio('audioMode'), exportMode: radio('exportMode'),
+      subSize: radio('subSize'), subPos: radio('subPos'), subColor: radio('subColor'),
+      lvOrig: $('lvOrig').value, lvDuck: $('lvDuck').value, lvDub: $('lvDub').value,
+    };
+  },
+  applySettings(st) {
+    if (!st) return;
+    const setSel = (id, v) => { const el = $(id); if (v != null && el.querySelector('option[value="' + v + '"]')) el.value = v; };
+    const setRadio = (n, v) => { const r = v && document.querySelector('input[name="' + n + '"][value="' + v + '"]'); if (r) r.checked = true; };
+    setSel('langSelect', st.language); setSel('modelSelect', st.model); setSel('trSrc', st.trSrc); setSel('trEngine', st.trEngine);
+    state.language = $('langSelect').value; state.model = $('modelSelect').value;
+    ['subMode', 'audioMode', 'exportMode', 'subSize', 'subPos', 'subColor'].forEach((n) => setRadio(n, st[n]));
+    [['lvOrig', 'lvOrigOut'], ['lvDuck', 'lvDuckOut'], ['lvDub', 'lvDubOut']].forEach(([id, out]) => {
+      if (st[id] != null) { $(id).value = st[id]; $(out).textContent = $(id).value + '%'; }
+    });
+  },
+  snapshot() {
+    return {
+      settings: this.readSettings(),
+      duration: state.duration || 0,
+      segments: state.segments.map((s) => ({
+        id: s.id, start: s.start, end: s.end, text: s.text, translation: s.translation || '',
+        speaker: s.speaker == null ? null : s.speaker, hasDub: !!s.dub,
+      })),
+    };
+  },
+
+  markDirty() {
+    if (!this.current || this.restoring) return;
+    this.dirty = true;
+    SaveState.set('saving');
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.flush(), this.DEBOUNCE);
+  },
+  markDub(segId) { if (!this.current || this.restoring) return; this.dubDel.delete(segId); this.dubPut.add(segId); this.markDirty(); },
+  markDubDeleted(segId) { if (!this.current || this.restoring) return; this.dubPut.delete(segId); this.dubDel.add(segId); this.markDirty(); },
+  markAllDubsReset() { if (!this.current || this.restoring) return; this.resetDubs = true; this.dubPut.clear(); this.dubDel.clear(); this.markDirty(); },
+
+  // Write pending changes. Everything is captured synchronously first, so a
+  // later project switch can never leak data into this save.
+  async flush() {
+    clearTimeout(this.timer);
+    if (this.saving) { await this.saving.catch(() => {}); }
+    if (!this.current || !this.dirty || !Store.ok) return;
+    const proj = this.current;
+    const id = proj.id;
+    const snap = this.snapshot();
+    proj.updatedAt = Date.now();
+    if (state.duration) proj.video.duration = state.duration;
+    const record = { id, name: proj.name, createdAt: proj.createdAt, updatedAt: proj.updatedAt, video: { ...proj.video }, videoStored: proj.videoStored, data: snap };
+    const reset = this.resetDubs;
+    const puts = [...this.dubPut].map((sid) => Segments.get(sid)).filter((s) => s && s.dub)
+      .map((s) => ({ key: id + '|' + s.id, projectId: id, segId: s.id, pcm: s.dub.pcm, sr: s.dub.sr, dur: s.dub.dur }));
+    const dels = [...this.dubDel];
+    this.dirty = false; this.resetDubs = false; this.dubPut.clear(); this.dubDel.clear();
+    this.saving = Store.tx(['projects', 'dubs'], 'readwrite', (s) => {
+      s.projects.put(record);
+      if (reset) Store.clearDubsIn(s.dubs, id);
+      dels.forEach((sid) => s.dubs.delete(id + '|' + sid));
+      puts.forEach((d) => s.dubs.put(d));
+    });
+    try {
+      await this.saving;
+      if (!this.dirty) SaveState.set('saved');
+    } catch (e) {
+      // Put the work back so the next change retries it.
+      this.dirty = true; if (reset) this.resetDubs = true;
+      puts.forEach((d) => this.dubPut.add(d.segId)); dels.forEach((sid) => this.dubDel.add(sid));
+      SaveState.set('error', this.errorText(e));
+      UI.toast(this.errorText(e));
+    } finally { this.saving = null; }
+  },
+  errorText(e) {
+    const n = e && (e.name || ''), m = String(e && e.message || e);
+    if (n === 'QuotaExceededError' || /quota/i.test(m)) return 'Cihazda yer kalmadı; son değişiklikler kaydedilemedi. Eski projeleri silip yer açabilirsin.';
+    return 'Kaydedilemedi: ' + m;
+  },
+
+  // Start a new project for a freshly chosen video.
+  async create(file) {
+    if (!Store.ok) return;
+    const now = Date.now();
+    const proj = {
+      id: this.newId(), name: Util.baseName(file.name), createdAt: now, updatedAt: now,
+      video: { name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0, duration: 0 },
+      videoStored: false,
+    };
+    this.current = proj;
+    this.awaitingVideo = false;
+    this.setActive(proj.id);
+    this.dirty = true;
+    await this.flush();
+    if (this.current !== proj) return;
+    await this.saveVideo(file);
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  },
+  async saveVideo(file) {
+    const proj = this.current;
+    if (!proj || !Store.ok) return;
+    SaveState.set('saving', 'Video bu cihaza kaydediliyor');
+    try {
+      await Store.tx(['videos'], 'readwrite', (s) => { s.videos.put({ projectId: proj.id, blob: file }); });
+      proj.videoStored = true;
+      proj.video = { name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0, duration: state.duration || proj.video.duration || 0 };
+      if (this.current === proj) { this.dirty = true; await this.flush(); }
+    } catch (e) {
+      proj.videoStored = false;
+      if (this.current === proj) { this.dirty = true; await this.flush(); }
+      UI.alert('warn', 'Video bu cihaza kaydedilemedi (' + this.errorText(e) + '). Cümleler, çeviriler ve ses kayıtları yine kaydedilir; projeyi sonra açarken aynı videoyu tekrar seçmen gerekir.');
+    }
+  },
+
+  // Load a stored project into the editor.
+  async open(id) {
+    if (!Store.ok) return false;
+    const meta = await Store.get('projects', id);
+    if (!meta) return false;
+    const [vid, dubs] = await Promise.all([Store.get('videos', id).catch(() => null), Store.dubsOf(id).catch(() => [])]);
+    this.restoring = true;
+    try {
+      Player.stop(); Preview.stopSource();
+      this.current = { id: meta.id, name: meta.name, createdAt: meta.createdAt, updatedAt: meta.updatedAt, video: meta.video || {}, videoStored: !!(vid && vid.blob) };
+      this.dirty = false; this.resetDubs = false; this.dubPut.clear(); this.dubDel.clear();
+      this.setActive(meta.id);
+      const data = meta.data || {};
+      this.applySettings(data.settings);
+      const dubMap = new Map(dubs.map((d) => [d.segId, d]));
+      const segs = (data.segments || []).map((s) => {
+        const d = dubMap.get(s.id);
+        return {
+          id: s.id, start: s.start, end: s.end, text: s.text || '', translation: s.translation || '', speaker: s.speaker == null ? null : s.speaker,
+          dub: d ? { pcm: d.pcm instanceof Float32Array ? d.pcm : new Float32Array(d.pcm), sr: d.sr, dur: d.dur, cache: null } : null,
+        };
+      });
+      if (vid && vid.blob) {
+        const v = meta.video || {};
+        const file = vid.blob instanceof File ? vid.blob : new File([vid.blob], v.name || 'video', { type: v.type || vid.blob.type, lastModified: v.lastModified || Date.now() });
+        VideoInput.attach(file);
+        this.awaitingVideo = false;
+      } else {
+        VideoInput.showMissing(meta.video || {});
+        this.awaitingVideo = true;
+      }
+      state.duration = data.duration || (meta.video && meta.video.duration) || state.duration;
+      Segments.set(segs);
+      SubStyle.applyOverlay(); Preview.apply(); Export.summary(); Translation.refreshHint(); Translation.updateButtons();
+      UI.clearAlerts('trAlerts'); UI.clearAlerts('dubAlerts'); UI.clearAlerts('expAlerts');
+      $('stTr').classList.add('hidden');
+      SaveState.set('saved');
+    } finally {
+      this.restoring = false;
+    }
+    return true;
+  },
+
+  // Restore the active project after a reload.
+  async boot() {
+    const ok = await Store.open();
+    if (!ok) { SaveState.set('off', 'Bu tarayıcıda otomatik kayıt kullanılamıyor (' + (Store.error || 'bilinmiyor') + ').'); return; }
+    const id = this.activeId();
+    if (!id) return;
+    try {
+      const opened = await this.open(id);
+      if (opened) UI.toast('Proje geri yüklendi: ' + this.current.name);
+      else this.setActive(null);
+    } catch (e) {
+      UI.alert('err', 'Kayıtlı proje açılamadı: ' + (e && e.message || e));
+      this.restoring = false;
+    }
+  },
+  pending() { return this.dirty || !!this.saving; },
+};
+
 /* ---------- Settings (remembered in localStorage) ---------- */
 const Settings = {
   init() {
@@ -2719,12 +3038,23 @@ const Settings = {
   Export.init();
   Stepper.init();
   Stepper.update();
+  // Any project setting changed (radios, sliders, selects) -> autosave.
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (!t || t.closest('#hero') || ['fileInput', 'mmEmail', 'mmRemember'].includes(t.id)) return;
+    if (t.matches('input[type=radio], input[type=range], select')) Project.markDirty();
+  });
+  // Save right away when the page is hidden or closed.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Project.flush(); });
+  window.addEventListener('pagehide', () => Project.flush());
+  $('saveState').addEventListener('click', () => { if (SaveState.detail) UI.toast(SaveState.detail); });
   window.addEventListener('beforeunload', (e) => {
-    if (Export.running || Recorder.activeId != null || Mix.dubbed().length) { e.preventDefault(); e.returnValue = ''; }
+    if (Export.running || Recorder.activeId != null || Project.pending() || (!Store.ok && Mix.dubbed().length)) { e.preventDefault(); e.returnValue = ''; }
   });
   window.addEventListener('beforeunload', (e) => { if (state.translating) { e.preventDefault(); e.returnValue = ''; } });
   window.addEventListener('beforeunload', (e) => { if (state.busy) { e.preventDefault(); e.returnValue = ''; } });
   if (!window.isSecureContext) UI.alert('warn', 'Sayfa https üzerinden açılmadı. Model önbelleği ve kopyalama düzgün çalışmayabilir.');
+  Project.boot();
 })();
 </script>
 </body>

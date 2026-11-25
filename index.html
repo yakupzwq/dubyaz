@@ -602,7 +602,7 @@
     <details id="dubPanel" class="panel tr-panel hidden">
       <summary><h2>Dublaj</h2><span id="dubCount" class="sidenote"></span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none"/></svg></summary>
       <div class="tr-body">
-        <p class="hint">Her cümlenin kartındaki kırmızı düğmeyle kaydet. 3-2-1 sayımından sonra o cümlenin videosu sessiz oynar; Türkçe metni oku, bitince düğmeye tekrar bas. Uzun kayıtlar ses tonu bozulmadan en fazla 1,3 kat hızlandırılır.</p>
+        <p class="hint">Her cümlenin kartındaki kırmızı düğmeyle kaydet. 3-2-1 sayımından sonra o cümlenin videosu sessiz oynar; Türkçe metni oku, bitince düğmeye tekrar bas. Kayıt ses tonu bozulmadan cümleye uydurulur: kısa kayıt en fazla 0,9 kata yavaşlatılır; uzun kayıt önce sonraki cümleye kadarki boşluğa yerleştirilir, gerekirse en fazla 1,4 kata hızlandırılır.</p>
         <label class="field">Orijinal ses (dublaj olmayan yerlerde) <output id="lvOrigOut">100%</output>
           <input id="lvOrig" type="range" min="0" max="100" value="100" step="5">
         </label>
@@ -640,7 +640,7 @@
     </div>
   </section>
 </main>
-<p class="foot">DubYaz v1.7. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
+<p class="foot">DubYaz v1.8. Hesap, anahtar veya sunucu yok; videon cihazından çıkmaz.</p>
 
 <dialog id="projDialog" aria-labelledby="projTitle">
   <div class="pd-head">
@@ -1332,12 +1332,21 @@ const Segments = {
     c.querySelector('[data-act="deldub"]').disabled = !s.dub || recording;
     info.className = 'dub-info';
     if (liveText) { info.textContent = liveText; return; }
-    const slot = DubFit.slot(s);
-    if (!s.dub) { info.textContent = 'Kayıt yok. Bu cümle için ' + slot.toFixed(1) + ' sn var.'; return; }
-    const f = DubFit.info(s);
-    if (f.need <= 1) { info.classList.add('ok'); info.textContent = s.dub.dur.toFixed(1) + ' sn kayıt, süreye sığıyor.'; }
-    else if (f.fits) { info.classList.add('warn'); info.textContent = s.dub.dur.toFixed(1) + ' sn kayıt, ' + f.rate.toFixed(2) + ' kat hızlandırılacak.'; }
-    else { info.classList.add('bad'); info.textContent = s.dub.dur.toFixed(1) + ' sn kayıt, sığmıyor (' + f.need.toFixed(2) + ' kat gerekir). 1,3 kat hızlandırılıp sonraki cümleye taşar; daha hızlı okuyup tekrar kaydedebilirsin.'; }
+    const n = (x, d = 1) => x.toFixed(d).replace('.', ',');
+    if (!s.dub) {
+      const own = DubFit.own(s), slot = DubFit.slot(s);
+      info.textContent = 'Kayıt yok. Hedef ' + n(own) + ' sn' + (slot - own > 0.15 ? ' (en fazla ' + n(slot) + ' sn)' : '') + '.';
+      return;
+    }
+    const f = DubFit.info(s), d = n(s.dub.dur) + ' sn kayıt';
+    switch (f.status) {
+      case 'fit': info.classList.add('ok'); info.textContent = d + ', cümleye tam uyuyor.'; break;
+      case 'slow': info.classList.add('ok'); info.textContent = d + ', ' + n(f.rate, 2) + ' kat yavaşlatılıp cümleye uyduruldu.'; break;
+      case 'gap': info.classList.add('ok'); info.textContent = d + ', sonraki cümleye kadarki boşluğa sığıyor.'; break;
+      case 'fast': info.classList.add('warn'); info.textContent = d + ', ' + n(f.rate, 2) + ' kat hızlandırılıp uyduruldu.'; break;
+      case 'short': info.classList.add('warn'); info.textContent = 'Çok kısa: ' + d + ', 0,9 kat yavaşlatıldı, sonunda ' + n(f.own - f.outDur) + ' sn sessizlik kalır. İstersen tekrar kaydet.'; break;
+      default: info.classList.add('bad'); info.textContent = 'Çok uzun: ' + d + ', 1,4 kat hızlandırılsa bile ' + n(f.outDur - f.slot) + ' sn taşıyor. Daha kısa okuyup tekrar kaydet.';
+    }
   },
   get(id) { return state.segments.find((s) => s.id === id); },
   autosize(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; },
@@ -1962,7 +1971,8 @@ const Translation = {
    Segment field added: s.dub = {pcm: Float32Array, sr, dur} | null
    ===================================================================== */
 const MIX_RATE = 48000;
-const MAX_SPEEDUP = 1.3;
+const FIT_MIN = 0.9;   // max slow-down (0.9x)
+const FIT_MAX = 1.4;   // max speed-up (1.4x)
 
 /* ---------- Audio DSP helpers (pure functions, unit-testable) ---------- */
 const DSP = {
@@ -1982,9 +1992,9 @@ const DSP = {
     return pcm.slice(Math.max(0, a - pad), Math.min(pcm.length, b + pad));
   },
   peak(pcm) { let p = 0; for (let i = 0; i < pcm.length; i++) { const a = Math.abs(pcm[i]); if (a > p) p = a; } return p; },
-  // WSOLA time-stretch: rate > 1 makes audio shorter/faster without changing pitch.
+  // WSOLA time-stretch without changing pitch: rate > 1 = shorter/faster, rate < 1 = longer/slower.
   timeStretch(input, rate, sr) {
-    if (rate <= 1.001 || input.length < sr * 0.1) return input.slice();
+    if (Math.abs(rate - 1) < 0.001 || input.length < sr * 0.1) return input.slice();
     const win = Math.round(sr * 0.03);
     const hopOut = Math.round(win / 2);
     const hopIn = hopOut * rate;
@@ -2032,17 +2042,36 @@ const DSP = {
 
 /* ---------- Dub timing: slot = time until the next sentence starts ---------- */
 const DubFit = {
+  // The sentence's own length (start -> end).
+  own(s) { return Math.max(0.3, s.end - s.start); },
+  // Maximum room: until the next sentence starts (or the video ends).
   slot(s) {
     const i = state.segments.indexOf(s);
     const next = state.segments[i + 1];
     const end = next ? next.start : (state.duration || s.end);
-    return Math.max(0.5, end - s.start);
+    return Math.max(this.own(s), end - s.start);
   },
+  /* Fit rules (mixed target):
+     1) shorter than the sentence  -> slow down up to 0.9x to fill it ("short" if even 0.9x is not enough)
+     2) longer than the sentence but fits the gap before the next one -> play as is
+     3) longer than the gap        -> speed up up to 1.4x ("long" if even 1.4x is not enough) */
   info(s) {
     if (!s.dub) return null;
-    const slot = this.slot(s), need = s.dub.dur / slot;
-    const rate = need <= 1 ? 1 : Math.min(need, MAX_SPEEDUP);
-    return { slot, need, rate, outDur: s.dub.dur / rate, fits: need <= MAX_SPEEDUP };
+    const own = this.own(s), slot = this.slot(s), dur = s.dub.dur;
+    let rate = 1, status;
+    if (dur <= own) {
+      const need = dur / own;
+      if (need >= 0.995) status = 'fit';
+      else if (need >= FIT_MIN) { rate = need; status = 'slow'; }
+      else { rate = FIT_MIN; status = 'short'; }
+    } else if (dur <= slot) {
+      status = 'gap';
+    } else {
+      const need = dur / slot;
+      if (need <= FIT_MAX) { rate = need; status = 'fast'; }
+      else { rate = FIT_MAX; status = 'long'; }
+    }
+    return { own, slot, rate, status, outDur: dur / rate, need: status === 'long' ? dur / slot : status === 'short' ? dur / own : rate };
   },
   // Stretched PCM, cached per rate.
   clip(s) {
@@ -2311,7 +2340,8 @@ const Recorder = {
         Project.markDub(s.id);
         Mix.invalidate();
         const f = DubFit.info(s);
-        if (!f.fits) UI.toast('Kayıt cümleye sığmıyor; daha hızlı okuyup tekrar kaydedebilirsin');
+        if (f.status === 'long') UI.toast('Kayıt çok uzun; daha kısa okuyup tekrar kaydedebilirsin');
+        else if (f.status === 'short') UI.toast('Kayıt çok kısa; kelime atladıysan tekrar kaydet');
       }
     } catch (e) {
       UI.alert('err', 'Kayıt işlenemedi: ' + (e && e.message || e), 'dubAlerts');
